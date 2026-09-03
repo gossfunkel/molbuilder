@@ -1,6 +1,6 @@
 #include "raylib.h"
 #include "raymath.h"
-#include <stddef.h>
+#include <stdlib.h>
 
 #define TAU (M_PI*2.f)
 
@@ -54,21 +54,34 @@ float mass_table[10] = {
     20.1797f // Ne
 };
 
-#define make_atom(atomic_num, pos) (Atom){atomic_num, e_q_table[atomic_num], mass_table[atomic_num], pos, 0, {0}}
+#define ATOM_BUFF_SIZE 128
+Atom *all_ats = NULL;
+size_t num_ats = 0;
+
+// TODO make pure version
+Atom *make_atom(size_t atomic_num, Vector3 pos) {
+    if ((1+num_ats) % ATOM_BUFF_SIZE == 0) all_ats = realloc(all_ats, sizeof (Atom) * (num_ats + ATOM_BUFF_SIZE));
+    all_ats[num_ats] = (Atom){
+        atomic_num, e_q_table[atomic_num], mass_table[atomic_num], pos, 0, {{0}}
+    };
+    return all_ats + num_ats++;
+}
 
 int main() {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Molecule Builder");
 
-    Atom test_hydros[2] = {
-        make_atom(1, ((Vector3){-1., 0., 0.})),
-        make_atom(1, ((Vector3){ 1., 0., 0.}))
+    all_ats = malloc(sizeof (Atom) * ATOM_BUFF_SIZE);
+
+    Atom *test_hydros[2] = {
+        make_atom(1, ((Vector3){200., 200., 0.})),
+        make_atom(1, ((Vector3){400., 200., 0.}))
     };
 
-    Bond test_hydrobond = (Bond){test_hydros, test_hydros+1};
-    test_hydros[0].num_bonds = 1;
-    test_hydros[0].bonds[0] = test_hydrobond;
-    test_hydros[1].num_bonds = 1;
-    test_hydros[1].bonds[0] = test_hydrobond;
+    Bond test_hydrobond = (Bond){test_hydros[0], test_hydros[1]};
+    test_hydros[0]->num_bonds = 1;
+    test_hydros[0]->bonds[0] = test_hydrobond;
+    test_hydros[1]->num_bonds = 1;
+    test_hydros[1]->bonds[0] = test_hydrobond;
 
     double theta = 0.f; int inverter = 0;
 
@@ -80,10 +93,9 @@ int main() {
         BeginDrawing();
             ClearBackground(WHITE);
 
-            for (int i = 0; i < 3; i++)
-                DrawCircle(SCREEN_WIDTH/2.f + 100.f * cos(fmod(theta + (float)i * TAU/3.f, 360.f)),
-                          SCREEN_HEIGHT/2.f - 100.f * sin(fmod(theta + (float)i * TAU/3.f, 360.f)), 
-                          20.f, colours[i + inverter]);
+            for (size_t at = 0; at < num_ats; at++)
+                DrawCircle(all_ats[at].position.x, all_ats[at].position.y, 
+                           all_ats[at].atomic_num * 4, colours[all_ats[at].atomic_num]);
 
         EndDrawing();
 
