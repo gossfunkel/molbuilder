@@ -16,9 +16,8 @@ typedef struct Bond {
 
 typedef struct Atom {
     size_t atomic_num;
-    float *nuclear_charge;
-    float atomic_mass;
     Vector3 position;
+    RayCollision collision;
     size_t num_bonds;
     Bond bonds[8];
 } Atom;
@@ -27,54 +26,46 @@ Color colours[10] = {
     BLUE, SKYBLUE, ORANGE, MAGENTA, GREEN, GOLD, DARKGREEN, RED, LIME, LIGHTGRAY
 };
 
-// effective charges for each available orbital
-float *e_q_table[10] = {
-    (float[1]){1.f},            // H
-    (float[1]){1.688f},         // He
-    (float[2]){2.691f, 1.279f}, // Li
-    (float[2]){3.685f, 1.912f}, // Be
-    (float[3]){4.680f, 2.576f, 2.421f}, // B
-    (float[3]){5.673f, 3.217f, 3.136f}, // C
-    (float[3]){6.665f, 3.847f, 3.834f}, // N
-    (float[3]){7.658f, 4.492f, 4.453f}, // O
-    (float[3]){8.650f, 5.128f, 5.100f}, // F
-    (float[3]){9.642f, 5.758f, 5.758f}  // Ne
-};
-
-float mass_table[10] = {
-    1.0080f, // H
-    4.0026f, // He
-    6.94f, // Li
-    9.0122f, // Be
-    10.806f, // B
-    12.0116f, // C
-    14.00728f, // N
-    15.99903f, // O
-    18.9984f, // F
-    20.1797f // Ne
-};
-
 #define ATOM_BUFF_SIZE 128
 Atom *all_ats = NULL;
 size_t num_ats = 0;
 
-// TODO make pure version
 Atom *make_atom(size_t atomic_num, Vector3 pos) {
     if ((1+num_ats) % ATOM_BUFF_SIZE == 0) all_ats = realloc(all_ats, sizeof (Atom) * (num_ats + ATOM_BUFF_SIZE));
     all_ats[num_ats] = (Atom){
-        atomic_num, e_q_table[atomic_num], mass_table[atomic_num], pos, 0, {{0}}
+        atomic_num, pos, {0}, 0, {{0}}
     };
     return all_ats + num_ats++;
 }
 
+/*
+ * GAME LOGIC
+ * 
+ *  Simple rules to discover new molecules:
+ *  - Hydrogenate: give every free electron on your molecule a Hydrogen
+ *  - Saturate: remove a Hydrogen from an r-C-C, leaving an r-C=C
+ *  - Carbonate: attach an r-CH=O to a free electron on a Carbon
+ *  - Oxidise: remove any Hydrogen and replace with an r=O
+ *  - Reduce: break an r=O double bond, leaving a free electron (r-O-e)
+ */
+
 int main() {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Molecule Builder");
+
+    Camera camera = { 0 };
+    camera.position = (Vector3){ 0.0f, -50.0f, 15.0f }; // Camera position
+    camera.target = (Vector3){ 0.0f, 0.0f, 0.0f };      // Camera looking at point
+    camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };          // Camera up vector (rotation towards target)
+    camera.fovy = 45.0f;                                // Camera field-of-view Y
+    camera.projection = CAMERA_PERSPECTIVE;             // Camera projection type
+
+    Ray ray = { 0 };                    // Picking line ray
 
     all_ats = malloc(sizeof (Atom) * ATOM_BUFF_SIZE);
 
     Atom *test_hydros[2] = {
-        make_atom(1, ((Vector3){200., 200., 0.})),
-        make_atom(1, ((Vector3){400., 200., 0.}))
+        make_atom(1, ((Vector3){ 5., 0., 0.})),
+        make_atom(1, ((Vector3){-5., 0., 0.}))
     };
 
     Bond test_hydrobond = (Bond){test_hydros[0], test_hydros[1]};
@@ -83,19 +74,44 @@ int main() {
     test_hydros[1]->num_bonds = 1;
     test_hydros[1]->bonds[0] = test_hydrobond;
 
-    double theta = 0.f; int inverter = 0;
+    //double dt = 0.f;
+
+    bool selected = false;
+    size_t selected_atom = 0;
 
     while (!WindowShouldClose()) {
-        theta -= GetFrameTime();
+        //dt = GetFrameTime();
+        //if (IsKeyReleased(KEY_SPACE)) break;
 
-        if (IsKeyReleased(KEY_SPACE)) inverter = (inverter) ? 0 : 3;
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+            //if (!selected) {
+                ray = GetScreenToWorldRay(GetMousePosition(), camera);
+                selected = false;
+                for (size_t at = 0; at < num_ats; at++) {
+                    all_ats[at].collision = GetRayCollisionSphere(ray, all_ats[at].position, all_ats[at].atomic_num*4);
+                    //any_coll = all_ats[at].collision;
+                    if (all_ats[at].collision.hit) {
+                        selected_atom = at;
+                        selected = true;
+                    }
+                }
+            //} else selected = false;
+        }
 
         BeginDrawing();
-            ClearBackground(WHITE);
+            ClearBackground(BLACK);
+
+            BeginMode3D(camera);
 
             for (size_t at = 0; at < num_ats; at++)
-                DrawCircle(all_ats[at].position.x, all_ats[at].position.y, 
-                           all_ats[at].atomic_num * 4, colours[all_ats[at].atomic_num]);
+                DrawSphere(all_ats[at].position, all_ats[at].atomic_num, colours[all_ats[at].atomic_num]);
+
+            if (selected)
+                DrawSphereWires(all_ats[selected_atom].position, 
+                                all_ats[selected_atom].atomic_num * 2,
+                                6, 6, WHITE);
+
+            EndMode3D();
 
         EndDrawing();
 
