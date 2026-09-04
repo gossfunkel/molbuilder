@@ -8,6 +8,20 @@
 #define SCREEN_WIDTH 600
 #define SCREEN_HEIGHT 600
 
+/* NOTES/TODO -----------------------------------------------------------------
+ *
+ *  We can't store indices in a dynamic graph without having to check and 
+ *      update all references whenever a change is made before the end of the 
+ *      data.
+ *  Node uid allows specific nodes to be found; use hashmaps for nodes and 
+ *      edges.
+ *
+ *  Should the constructor for an object also insert it? Or should we delay 
+ *      initialisation until we have searched the graph to check if there's a 
+ *      legal move?
+ *
+ */
+
 typedef struct Edge {
     size_t a;
     size_t b;
@@ -15,16 +29,24 @@ typedef struct Edge {
 
 class Node {
 public:
+    static size_t num_nodes;
     size_t m_uid;
     Vector2 m_position;
 
-    Node(size_t uid, Vector2 position) : m_uid {uid}, m_position {position} {
-        std::cout << "Making a node.\n" << std::endl;
+    Node(Vector2 position) : m_position {position} {
+        m_uid = num_nodes++;
+        std::cout << "Making node " << m_uid << ": ";
     }
 
-    //virtual Graph insert();
+    Node() {
+        Node(Vector2Zero());
+    }
+
+    virtual Graph insert(Graph gr) {};
     virtual void draw() const {};
 };
+
+size_t Node::num_nodes = 0;
 
 typedef struct Graph {
     std::vector<Node *> node_data;
@@ -36,8 +58,16 @@ public:
     size_t m_edges[1];
     const Color m_col {BLUE};
 
-    Circle(size_t uid, Vector2 position) : Node{uid, position} {
-        std::cout << "Making a circle.\n" << std::endl;
+    Circle(Vector2 position) : Node{position} {
+        std::cout << "circle." << std::endl;
+    }
+
+    Circle() : Node{} {
+        std::cout << "circle." << std::endl;
+    }
+
+    virtual Graph insert(Graph gr) {
+        // disallowed
     }
 
     virtual void draw() const {
@@ -50,8 +80,19 @@ public:
     size_t m_edges[2] {};
     const Color m_col {RED};
 
-    Ring(size_t uid, Vector2 position) : Node{uid, position} {
-        std::cout << "Making a ring.\n" << std::endl;
+    Ring(Vector2 position) : Node{position} {
+        std::cout << "ring." << std::endl;
+    }
+
+    Ring() : Node{} {
+        std::cout << "ring." << std::endl;
+    }
+
+    virtual Graph insert(Graph gr) {
+        // find [Circle or Square]
+        // replace [Circle or Square] with self (in node_data)
+        // update m_position and m_edges
+        // create new Circle and attach to other edge of self
     }
 
     virtual void draw() const {
@@ -64,8 +105,19 @@ public:
     size_t m_edges[3] {};
     const Color m_col {GREEN};
 
-    Triangle(size_t uid, Vector2 position) : Node{uid, position} {
-        std::cout << "Making a triangle.\n" << std::endl;
+    Triangle(Vector2 position) : Node{position} {
+        std::cout << "triangle." << std::endl;
+    }
+
+    Triangle() : Node{} {
+        std::cout << "triangle." << std::endl;
+    }
+
+    virtual Graph insert(Graph gr) {
+        // find [Circle or Square]
+        // replace [Circle or Square] with self (in node_data)
+        // update m_position and m_edges
+        // create new Circle and attach to other edge of self
     }
 
     virtual void draw() const {
@@ -82,8 +134,19 @@ public:
     size_t m_edges[4] {};
     const Color m_col {ORANGE};
 
-    Square(size_t uid, Vector2 position) : Node{uid, position} {
-        std::cout << "Making a square.\n" << std::endl;
+    Square(Vector2 position) : Node{position} {
+        std::cout << "square." << std::endl;
+    }
+
+    Square() : Node{} {
+        std::cout << "square." << std::endl;
+    }
+
+    virtual Graph insert(Graph gr) {
+        // find [Circle or Square]
+        // replace [Circle or Square] with self (in node_data)
+        // update m_position and m_edges
+        // create new Circle and attach to other edge of self
     }
 
     virtual void draw() const {
@@ -91,17 +154,18 @@ public:
     }
 };
 
-// explore_graph
+// root node is at position 0
+// rules refer to root node and edge order
 
 int main() {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Geometric Graph Builder");
 
-    Circle test_circle = Circle(0, Vector2{250.f,250.f});
-    Ring test_ring = Ring(1, Vector2{250.f,350.f});
-    Triangle test_tri = Triangle(2, Vector2{350.f,250.f});
-    Square test_square = Square(3, Vector2{350.f,350.f});
+    Circle test_circle = Circle(Vector2{250.f,250.f});
+    Ring test_ring = Ring(Vector2{250.f,350.f});
+    Triangle test_tri = Triangle(Vector2{350.f,250.f});
+    Square test_square = Square(Vector2{350.f,350.f});
 
-    Graph g = Graph{std::vector<Node *>{&test_circle, &test_ring, &test_tri, &test_square}, std::vector<Edge>{}};
+    Graph g = Graph{std::vector<Node *>{&test_circle, &test_ring, &test_tri, &test_square}, std::vector<Edge>{Edge{0,1}}};
 
     //double dt = 0.f;
 
@@ -116,6 +180,10 @@ int main() {
                 
             for (auto nd : g.node_data)
                 nd->draw();
+
+            // TODO start edges closer to the other point (i.e. leave gap for sprite)
+            for (auto ej : g.edge_data)
+                DrawLineV(g.node_data.at(ej.a)->m_position, g.node_data.at(ej.b)->m_position, WHITE);
 
         EndDrawing();
 
