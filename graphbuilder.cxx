@@ -55,7 +55,7 @@ public:
     }
 
     virtual void draw() const {
-        DrawRing(this->m_position, 2, 4, 0, 0, 1, this->m_col);
+        DrawRing(this->m_position, 3, 6, 0, 360, 1, this->m_col);
     }
 };
 
@@ -70,9 +70,9 @@ public:
 
     virtual void draw() const {
         DrawTriangle(
-            Vector2Add(this->m_position, Vector2{0.f,-2.f}),
-            Vector2Add(this->m_position, Vector2{2.f,0.f}),
-            Vector2Add(this->m_position, Vector2{-2.f,0.f}),
+            Vector2Add(this->m_position, Vector2{ 0.f, -4.f}),
+            Vector2Add(this->m_position, Vector2{-5.f,  4.f}),
+            Vector2Add(this->m_position, Vector2{ 5.f,  4.f}),
             this->m_col);
     }
 };
@@ -87,7 +87,7 @@ public:
     }
 
     virtual void draw() const {
-        DrawRectangle(this->m_position.x - 1.f, this->m_position.y - 1.f, 2, 2, this->m_col);
+        DrawRectangle(this->m_position.x - 4.f, this->m_position.y - 4.f, 8, 8, this->m_col);
     }
 };
 
@@ -96,9 +96,12 @@ public:
 int main() {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Geometric Graph Builder");
 
-    Circle test_circle = Circle(0, Vector2{300.f,300.f});
+    Circle test_circle = Circle(0, Vector2{250.f,250.f});
+    Ring test_ring = Ring(1, Vector2{250.f,350.f});
+    Triangle test_tri = Triangle(2, Vector2{350.f,250.f});
+    Square test_square = Square(3, Vector2{350.f,350.f});
 
-    Graph g = Graph{std::vector<Node *>{&test_circle}, std::vector<Edge>{}};
+    Graph g = Graph{std::vector<Node *>{&test_circle, &test_ring, &test_tri, &test_square}, std::vector<Edge>{}};
 
     //double dt = 0.f;
 
