@@ -38,13 +38,23 @@ Atom *make_atom(size_t atomic_num, Vector3 pos) {
     return all_ats + num_ats++;
 }
 
+Atom **save_mol(Atom **saved_molecules, size_t save0, ...) {
+    if ((1+num_saved) % ATOM_BUFF_SIZE == 0) 
+        saved_molecules = 
+            realloc(saved_molecules, sizeof (Atom *) * (num_saved + ATOM_BUFF_SIZE));
+    for () {
+        // 
+    }
+    return saved_molecules;
+}
+
 /*
  * GAME LOGIC
  * 
  *  Simple rules to discover new molecules:
  *  - Hydrogenate: give every free electron on your molecule a Hydrogen
  *  - Saturate: remove a Hydrogen from an r-C-C, leaving an r-C=C
- *  - Carbonate: attach an r-CH=O to a free electron on a Carbon
+ *  - Carbonate: attach an r-CH=O to a free electron
  *  - Oxidise: remove any Hydrogen and replace with an r=O
  *  - Reduce: break an r=O double bond, leaving a free electron (r-O-e)
  */
@@ -62,6 +72,8 @@ int main() {
     Ray ray = { 0 };                    // Picking line ray
 
     all_ats = malloc(sizeof (Atom) * ATOM_BUFF_SIZE);
+
+    Atom **saved_molecules = malloc(sizeof (Atom *) * ATOM_BUFF_SIZE);
 
     Atom *test_hydros[2] = {
         make_atom(1, ((Vector3){ 5., 0., 0.})),

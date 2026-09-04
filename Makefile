@@ -5,7 +5,7 @@ ifeq ($(OS),Windows_NT)
 endif
 
 molbuilder: 
-	gcc molbuilder.c $(CFLAGS) -o molbuilder.exe
+	g++ molbuilder.c $(CFLAGS) -o molbuilder.exe
 
 h-molbuilder:
 	cabal run
