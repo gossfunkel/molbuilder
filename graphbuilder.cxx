@@ -27,11 +27,20 @@ typedef struct Edge {
     size_t b;
 } Edge;
 
+typedef enum NodeType {
+    NULL,
+    CIRCLE,
+    RING,
+    TRIANGLE,
+    SQUARE
+} NodeType;
+
 class Node {
 public:
     static size_t num_nodes;
     size_t m_uid;
     Vector2 m_position;
+    bool m_is_leaf;
 
     Node(Vector2 position) : m_position {position} {
         m_uid = num_nodes++;
@@ -42,7 +51,6 @@ public:
         Node(Vector2Zero());
     }
 
-    virtual Graph insert(Graph gr) {};
     virtual void draw() const {};
 };
 
@@ -57,6 +65,7 @@ class Circle : public Node {
 public:
     size_t m_edges[1];
     const Color m_col {BLUE};
+    const NodeType m_nodetype {NodeType::CIRCLE};
 
     Circle(Vector2 position) : Node{position} {
         std::cout << "circle." << std::endl;
@@ -64,10 +73,6 @@ public:
 
     Circle() : Node{} {
         std::cout << "circle." << std::endl;
-    }
-
-    virtual Graph insert(Graph gr) {
-        // disallowed
     }
 
     virtual void draw() const {
@@ -79,6 +84,7 @@ class Ring : public Node {
 public:
     size_t m_edges[2] {};
     const Color m_col {RED};
+    const NodeType m_nodetype {NodeType::RING};
 
     Ring(Vector2 position) : Node{position} {
         std::cout << "ring." << std::endl;
@@ -86,13 +92,6 @@ public:
 
     Ring() : Node{} {
         std::cout << "ring." << std::endl;
-    }
-
-    virtual Graph insert(Graph gr) {
-        // find [Circle or Square]
-        // replace [Circle or Square] with self (in node_data)
-        // update m_position and m_edges
-        // create new Circle and attach to other edge of self
     }
 
     virtual void draw() const {
@@ -104,6 +103,7 @@ class Triangle : public Node {
 public:
     size_t m_edges[3] {};
     const Color m_col {GREEN};
+    const NodeType m_nodetype {NodeType::TRIANGLE};
 
     Triangle(Vector2 position) : Node{position} {
         std::cout << "triangle." << std::endl;
@@ -111,13 +111,6 @@ public:
 
     Triangle() : Node{} {
         std::cout << "triangle." << std::endl;
-    }
-
-    virtual Graph insert(Graph gr) {
-        // find [Circle or Square]
-        // replace [Circle or Square] with self (in node_data)
-        // update m_position and m_edges
-        // create new Circle and attach to other edge of self
     }
 
     virtual void draw() const {
@@ -133,6 +126,7 @@ class Square : public Node {
 public:
     size_t m_edges[4] {};
     const Color m_col {ORANGE};
+    const NodeType m_nodetype {NodeType::SQUARE};
 
     Square(Vector2 position) : Node{position} {
         std::cout << "square." << std::endl;
@@ -142,17 +136,45 @@ public:
         std::cout << "square." << std::endl;
     }
 
-    virtual Graph insert(Graph gr) {
-        // find [Circle or Square]
-        // replace [Circle or Square] with self (in node_data)
-        // update m_position and m_edges
-        // create new Circle and attach to other edge of self
-    }
-
     virtual void draw() const {
         DrawRectangle(this->m_position.x - 4.f, this->m_position.y - 4.f, 8, 8, this->m_col);
     }
 };
+
+void explore_node(Group *gr, Node *node, std::vector<Node *> *node_list) {
+    // TODO this doesn't work if the graph contains loops (is this possible?)
+    if (!node->m_is_leaf) {
+        for (auto nbr_uid : curr_node->m_edges) {
+            explore_node(gr, gr->node_data.at(nbr_uid), node_list);
+        }
+    }
+    node_list->emplace_back(*node);
+}
+
+int find_node(Group *gr, size_t node_type, int backup_node_type) {
+    // 1. linearise graph in priority order (nodetype then position)
+    //      1.1 start with root node
+    //      1.2 go through first edge until a leaf is found
+    //      1.3 add node to list, step back and continue for all neighbours
+    //      1.4 repeat until all neighbours have been explored
+    // 2. check each node for a match, stopping on the first match
+    // explore unexplored nodes
+    std::vector<Node *> node_list;
+    explore_node(gr, gr.node_data.at(0), &node_list);
+    for (auto node : node_list) if (node->m_nodetype == node_type) return node->m_uid;
+    if (backup_node_type >= 0)
+        for (auto node : node_list) if (node->m_nodetype == backup_node_type) return node->m_uid;
+    return -1;
+}
+
+Group add_ring(Group gr) {
+    int node_id = find_node(&gr, CIRCLE, TRIANGLE);
+    if (node_id < 0) return gr;
+    Ring new_ring = Ring(gr.node_data.at(node_id)->m_position);
+    // TODO move current node position
+    // TODO replace node in edge connections and connect old node to new node
+    return gr;
+}
 
 // root node is at position 0
 // rules refer to root node and edge order
