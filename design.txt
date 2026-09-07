@@ -1,0 +1,33 @@
+N.B. ONLY CIRCLES CAN BE LEAVES!
+
+graph : [nodes, edges]
+
+insert logic:
+	step through nodes (ordered) via edges to find specific node types
+
+draw loop:
+	positions in graph (unsorted)
+
+data shape should reflect insert logic, since draw loop doesn't care
+so just insert nodes in the order they should be replaced; 
+	0 - root
+	1 - root's first neighbour
+	2 - 1's first neighbour OR if (1 == leaf) root's second neighbour
+	3 - (1 == leaf), (2 == leaf) = root's third neighbour
+	    (1 != leaf), (2 == leaf) = 1's second neighbour
+	    (2 != leaf) = 2's first neighbour
+	n - (n-1 != leaf) = (n-1)'s mth neighbour
+	    (n-2 == leaf), (n-1 == leaf) = (n-2)'s (m+1)th neighbour
+
+
+a-a
+
+a-b-a
+
+a-b-b-a
+
+ALTERNATIVELY
+
+hoop - any circle (leaf) node can be replaced
+tri  - any hoop next to a hoop can be replaced
+square - any hoop next to a triangle can be replaced
