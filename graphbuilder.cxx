@@ -5,8 +5,8 @@
 
 #define TAU (M_PI*2.f)
 
-#define SCREEN_WIDTH 600
-#define SCREEN_HEIGHT 600
+#define SCREEN_WIDTH 800
+#define SCREEN_HEIGHT 800
 
 /* NOTES/TODO -----------------------------------------------------------------
  *
@@ -62,8 +62,6 @@ public:
     inline size_t getNumEdges() const {
         return num_edges;
     };
-
-    virtual void draw() const {};
 };
 
 size_t Node::num_nodes = 0;
@@ -76,8 +74,6 @@ typedef struct Graph {
 // leaf node
 class Circle : public Node {
 public:
-    const Color m_col {BLUE};
-
     Circle(Vector2 position) : Node(position, 1) {
         std::cout << "circle." << std::endl;
     }
@@ -85,16 +81,10 @@ public:
     Circle() : Node(1) {
         std::cout << "circle." << std::endl;
     }
-
-    void draw() const override {
-        DrawCircleV(this->m_position, 5, this->m_col);
-    }
 };
 
 class Ring : public Node {
 public:
-    const Color m_col {RED};
-
     Ring(Vector2 position) : Node(position, 2) {
         std::cout << "ring." << std::endl;
     }
@@ -102,16 +92,10 @@ public:
     Ring() : Node(2) {
         std::cout << "ring." << std::endl;
     }
-
-    void draw() const override {
-        DrawRing(this->m_position, 3, 6, 0, 360, 1, this->m_col);
-    }
 };
 
 class Triangle : public Node {
 public:
-    const Color m_col {GREEN};
-
     Triangle(Vector2 position) : Node(position, 3) {
         std::cout << "triangle." << std::endl;
     }
@@ -119,30 +103,16 @@ public:
     Triangle() : Node(3) {
         std::cout << "triangle." << std::endl;
     }
-
-    void draw() const override {
-        DrawTriangle(
-            Vector2Add(this->m_position, Vector2{ 0.f, -4.f}),
-            Vector2Add(this->m_position, Vector2{-5.f,  4.f}),
-            Vector2Add(this->m_position, Vector2{ 5.f,  4.f}),
-            this->m_col);
-    }
 };
 
 class Square : public Node {
 public:
-    const Color m_col {ORANGE};
-
     Square(Vector2 position) : Node(position, 4) {
         std::cout << "square." << std::endl;
     }
 
     Square() : Node(4) {
         std::cout << "square." << std::endl;
-    }
-
-    void draw() const override {
-        DrawRectangle(this->m_position.x - 4.f, this->m_position.y - 4.f, 8, 8, this->m_col);
     }
 };
 
@@ -154,8 +124,8 @@ Graph add_ring(Graph gr, int node_id) {
     if (selected_node->getNodeType() != NodeType{CIRCLE}) return gr;
     Ring new_ring = Ring(selected_node->m_position);
 
-    Edge *replaced_edge = &gr.edge_data.at(gr.node_data.at(node_id).m_edges.at(0));
-    size_t *edge_this_end = ((int)(replaced_edge->a) == node_id) ? &replaced_edge->a : &replaced_edge->b;
+    Edge *replaced_edge    = &gr.edge_data.at(gr.node_data.at(node_id).m_edges.at(0));
+    size_t *edge_this_end  = ((int)(replaced_edge->a) == node_id) ? &replaced_edge->a : &replaced_edge->b;
     size_t *edge_other_end = ((int)(replaced_edge->a) == node_id) ? &replaced_edge->b : &replaced_edge->a;
 
     // move current node position opposite node at other end of edge
@@ -173,6 +143,99 @@ Graph add_ring(Graph gr, int node_id) {
     gr.node_data.at(node_id).m_edges.at(0) = new_ring.m_edges.at(1);
     gr.node_data.emplace_back(new_ring);
     return gr;
+}
+
+/*Graph add_tri(Graph gr, int node_id) {
+    if (node_id < 0 || node_id >= (int)gr.node_data.size()) return gr;
+    Node *selected_node = &gr.node_data.at(node_id);
+    if (selected_node->getNodeType() != NodeType{CIRCLE} && selected_node->getNodeType() != NodeType{RING}) return gr;
+    Triangle new_tri = Triangle(selected_node->m_position);
+
+    Edge *replaced_edge_i    = &gr.edge_data.at(gr.node_data.at(node_id).m_edges.at(0));
+    size_t *edge_i_this_end  = ((int)(replaced_edge_i->a) == node_id) ? &replaced_edge_i->a : &replaced_edge_i->b;
+    size_t *edge_i_other_end = ((int)(replaced_edge_i->a) == node_id) ? &replaced_edge_i->b : &replaced_edge_i->a;
+
+    if (selected_node->getNodeType() == NodeType{RING}) {
+        Edge *replaced_edge_j    = &gr.edge_data.at(gr.node_data.at(node_id).m_edges.at(0));
+        size_t *edge_j_this_end  = ((int)(replaced_edge_j->a) == node_id) ? &replaced_edge_j->a : &replaced_edge_j->b;
+        size_t *edge_j_other_end = ((int)(replaced_edge_j->a) == node_id) ? &replaced_edge_j->b : &replaced_edge_j->a;
+    }
+
+    // TODO move current node position to ... 
+    Vector2 diffPos = Vector2Subtract(
+        gr.node_data.at(node_id).m_position,
+        gr.node_data.at(*edge_i_other_end).m_position
+    );
+    gr.node_data.at(node_id).m_position = Vector2Add(gr.node_data.at(node_id).m_position, diffPos);
+
+    // replace node in edge connection and make new edge for old node
+    new_ring.m_edges.emplace_back(gr.node_data.at(node_id).m_edges.at(0));
+    *edge_this_end = new_ring.m_uid;
+    gr.edge_data.emplace_back(Edge{new_ring.m_uid, node_id});
+    new_ring.m_edges.emplace_back(gr.edge_data.size() - 1);
+    gr.node_data.at(node_id).m_edges.at(0) = new_ring.m_edges.at(1);
+    gr.node_data.emplace_back(new_ring);
+    return gr;
+}*/
+
+/*
+Graph add_square(Graph gr, int node_id) {
+    if (node_id < 0 || node_id >= (int)gr.node_data.size()) return gr;
+    Node *selected_node = &gr.node_data.at(node_id);
+    if (selected_node->getNodeType() != NodeType{RING}) return gr;
+    if (gr.edge_data.at(selected_node->m_edges.at(0)).a)getNodeType() != NodeType{RING}) return gr;
+    Square new_square = Square(selected_node->m_position);
+
+    Edge *replaced_edge_i    = &gr.edge_data.at(gr.node_data.at(node_id).m_edges.at(0));
+    size_t *edge_i_this_end  = ((int)(replaced_edge_i->a) == node_id) ? &replaced_edge_i->a : &replaced_edge_i->b;
+    size_t *edge_i_other_end = ((int)(replaced_edge_i->a) == node_id) ? &replaced_edge_i->b : &replaced_edge_i->a;
+
+    if (selected_node->getNodeType() == NodeType{RING}) {
+        Edge *replaced_edge_j    = &gr.edge_data.at(gr.node_data.at(node_id).m_edges.at(0));
+        size_t *edge_j_this_end  = ((int)(replaced_edge_j->a) == node_id) ? &replaced_edge_j->a : &replaced_edge_j->b;
+        size_t *edge_j_other_end = ((int)(replaced_edge_j->a) == node_id) ? &replaced_edge_j->b : &replaced_edge_j->a;
+    }
+
+    Vector2 diffPos = Vector2Subtract(
+        gr.node_data.at(node_id).m_position,
+        gr.node_data.at(*edge_i_other_end).m_position
+    );
+    // 3 positions of square neighbours
+    gr.node_data.at(node_id).m_position = Vector2Add(gr.node_data.at(node_id).m_position, diffPos);
+    gr.node_data.at(node_id).m_position = Vector2Add(gr.node_data.at(node_id).m_position, Vector2Rotate(diffPos, 90));
+    gr.node_data.at(node_id).m_position = Vector2Add(gr.node_data.at(node_id).m_position, Vector2Rotate(diffPos, -90));
+
+    // replace node in edge connection and make new edge for old node
+    new_ring.m_edges.emplace_back(gr.node_data.at(node_id).m_edges.at(0));
+    *edge_this_end = new_ring.m_uid;
+    gr.edge_data.emplace_back(Edge{new_ring.m_uid, node_id});
+    new_ring.m_edges.emplace_back(gr.edge_data.size() - 1);
+    gr.node_data.at(node_id).m_edges.at(0) = new_ring.m_edges.at(1);
+    gr.node_data.emplace_back(new_ring);
+    return gr;
+}*/
+
+void draw_node(Node &nd) {
+    switch (nd.getNodeType()) {
+    case NodeType{CIRCLE}:
+        DrawCircleV(nd.m_position, 5, SKYBLUE);
+        break;
+    case NodeType{RING}:
+        DrawRing(nd.m_position, 3, 6, 0, 360, 1, YELLOW);
+        break;
+    case NodeType{TRIANGLE}:
+        DrawTriangle(
+            Vector2Add(nd.m_position, Vector2{ 0.f, -4.f}),
+            Vector2Add(nd.m_position, Vector2{-5.f,  4.f}),
+            Vector2Add(nd.m_position, Vector2{ 5.f,  4.f}),
+            GREEN);
+        break;
+    case NodeType{SQUARE}:
+        DrawRectangle(nd.m_position.x - 4.f, nd.m_position.y - 4.f, 8, 8, PURPLE);
+        break;
+    default:
+        DrawCircleLinesV(nd.m_position, 3, RED);
+    };
 }
 
 // root node is at position 0
@@ -199,6 +262,8 @@ int main() {
 
     //double dt = 0.f;
 
+    NodeType create_node_type = {RING};
+    bool hit = false;
     int selected_node = {-1};
     Vector2 mousePos = {0.,0.};
 
@@ -208,22 +273,46 @@ int main() {
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             mousePos = GetMousePosition();
             for (auto nd : g.node_data)
-                if (CheckCollisionPointCircle(mousePos, nd.m_position, 10))
+                if (CheckCollisionPointCircle(mousePos, nd.m_position, 10)) {
                     selected_node = nd.m_uid;
+                    hit = true;
+                }
+            if (!hit) selected_node = -1;
+            hit = false;
         }
 
-        if (IsKeyReleased(KEY_R)) {
-            g = add_ring(g, selected_node);
+        if (IsKeyPressed(KEY_R)) {
+            create_node_type = NodeType{RING};
+        } else if (IsKeyPressed(KEY_T)) {
+            create_node_type = NodeType{TRIANGLE};
+        } else if (IsKeyPressed(KEY_S)) {
+            create_node_type = NodeType{SQUARE};
+        }
+
+        if (IsKeyReleased(KEY_ENTER)) {
+            switch (create_node_type) {
+            case NodeType{RING}:
+                g = add_ring(g, selected_node);
+                break;
+            case NodeType{TRIANGLE}:
+                //g = add_tri(g, selected_node);
+                std::cout << "Adding triangle not yet implemented." << std::endl;
+                break;
+            case NodeType{SQUARE}:
+                //g = add_square(g, selected_node);
+                std::cout << "Adding square not yet implemented." << std::endl;
+                break;
+            default:
+                std::cerr << "Undefined node type selected!" << std::endl;
+            }
         }
 
         BeginDrawing();
             ClearBackground(BLACK);
                 
-            for (auto nd : g.node_data)
-                nd.draw();
+            for (Node nd : g.node_data) draw_node(nd);
 
-            if (selected_node >= 0)
-                DrawCircleLinesV(g.node_data.at(selected_node).m_position, 7, WHITE);
+            if (selected_node >= 0) DrawCircleLinesV(g.node_data.at(selected_node).m_position, 7, WHITE);
 
             // TODO start edges closer to the other point (i.e. leave gap for sprite)
             for (auto ej : g.edge_data)
