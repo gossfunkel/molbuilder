@@ -1,12 +1,16 @@
 #include "raylib.h"
 #include "raymath.h"
 #include <iostream>
+#include <algorithm>
 #include <vector>
+#include <ranges>
 
 #define TAU (M_PI*2.f)
 
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 800
+
+#define CURSOR_COL Color{100, 200, 20, 120}
 
 /* NOTES/TODO -----------------------------------------------------------------
  *
@@ -22,11 +26,6 @@
  *
  */
 
-typedef struct Edge {
-    size_t a;
-    size_t b;
-} Edge;
-
 typedef enum NodeType {
     UNDEF,
     CIRCLE,
@@ -38,38 +37,68 @@ typedef enum NodeType {
 class Node {
 protected:
     const NodeType nodetype;
-    const size_t num_edges;
+    const size_t num_neighbours;
 public:
     static size_t num_nodes;
     size_t m_uid;
     Vector2 m_position;
-    std::vector<size_t> m_edges;
+    std::vector<size_t> m_neighbours;
 
-    Node(size_t nt) : nodetype {NodeType(nt)}, num_edges {nt}, m_position {Vector2{0.,0.}} {
+    Node(size_t nt) : nodetype {NodeType(nt)}, num_neighbours {nt}, m_position {Vector2{0.,0.}} {
         m_uid = num_nodes++;
         std::cout << "Making node " << m_uid << ": ";
     }
 
-    Node(Vector2 position, size_t nt) : nodetype {NodeType(nt)}, num_edges {nt}, m_position {position} {
+    Node(Vector2 position, size_t nt) : nodetype {NodeType(nt)}, num_neighbours {nt}, m_position {position} {
         m_uid = num_nodes++;
         std::cout << "Making node " << m_uid << ": ";
+    }
+
+    Node(Node &&) = default;
+
+    Node(const Node &) = default;
+
+    Node& operator=(Node &other) {
+        Node(other.m_position, other.getNumNbrs());
+        return *this;
+    }
+
+    Node& operator=(Node &&other) {
+        Node(other.m_position, other.getNumNbrs());
+        m_uid = other.m_uid;
+        m_neighbours = std::move(other.m_neighbours);
+        return *this;
     }
 
     inline NodeType getNodeType() const {
         return nodetype;
     };
 
-    inline size_t getNumEdges() const {
-        return num_edges;
+    inline size_t getNumNbrs() const {
+        return num_neighbours;
     };
 };
 
 size_t Node::num_nodes = 0;
 
+typedef std::vector<std::pair<size_t,size_t>> NbrPairs;
+typedef std::vector<Node> NodeData;
+
 typedef struct Graph {
-    std::vector<Node> node_data;
-    std::vector<Edge> edge_data;
+    NodeData node_data;
+    NbrPairs all_nbrs;
 } Graph;
+
+// TODO can i use std::views::join / std::views::join_with or suchlike?
+NbrPairs refresh_all_nbrs(NodeData node_data) {
+    NbrPairs new_pairs;
+    for (auto nd : node_data) 
+        for (auto nb : nd.m_neighbours) new_pairs.emplace_back(nd.m_uid, nb);
+    std::ranges::sort(new_pairs);
+    const auto rm = std::ranges::unique(new_pairs);
+    new_pairs.erase(rm.begin(), rm.end());
+    return new_pairs;
+}
 
 // leaf node
 class Circle : public Node {
@@ -118,31 +147,34 @@ public:
 
 // TODO use std::pairs / std::ranges::views::pairwise instead of the edges thing?
 
-Graph add_ring(Graph gr, int node_id) {
-    if (node_id < 0 || node_id >= (int)gr.node_data.size()) return gr;
-    Node *selected_node = &gr.node_data.at(node_id);
-    if (selected_node->getNodeType() != NodeType{CIRCLE}) return gr;
+NodeData add_ring(NodeData n_d, int node_id) {
+    if (node_id < 0 || node_id >= (int)n_d.size()) return n_d;
+    Node *selected_node = &n_d.at(node_id);
+    Node *selected_nbr  = &n_d.at(selected_node->m_neighbours.at(0));
+    if (selected_node->getNodeType() != NodeType{CIRCLE}) return n_d;
     Ring new_ring = Ring(selected_node->m_position);
-
-    Edge *replaced_edge    = &gr.edge_data.at(gr.node_data.at(node_id).m_edges.at(0));
-    size_t *edge_this_end  = ((int)(replaced_edge->a) == node_id) ? &replaced_edge->a : &replaced_edge->b;
-    size_t *edge_other_end = ((int)(replaced_edge->a) == node_id) ? &replaced_edge->b : &replaced_edge->a;
+    std::cout << "Selected node " << node_id << " with neighbour " 
+              << selected_node->m_neighbours.at(0) << " replaced by ring " 
+              << new_ring.m_uid << "." << std::endl;
 
     // move current node position opposite node at other end of edge
     Vector2 diffPos = Vector2Subtract(
-        gr.node_data.at(node_id).m_position,
-        gr.node_data.at(*edge_other_end).m_position
+        selected_node->m_position,
+        selected_nbr->m_position
     );
-    gr.node_data.at(node_id).m_position = Vector2Add(gr.node_data.at(node_id).m_position, diffPos);
+    selected_node->m_position = Vector2Add(selected_node->m_position, diffPos);
 
-    // replace node in edge connection and make new edge for old node
-    new_ring.m_edges.emplace_back(gr.node_data.at(node_id).m_edges.at(0));
-    *edge_this_end = new_ring.m_uid;
-    gr.edge_data.emplace_back(Edge{new_ring.m_uid, node_id});
-    new_ring.m_edges.emplace_back(gr.edge_data.size() - 1);
-    gr.node_data.at(node_id).m_edges.at(0) = new_ring.m_edges.at(1);
-    gr.node_data.emplace_back(new_ring);
-    return gr;
+    // add neighbours 
+    new_ring.m_neighbours.emplace_back(selected_node->m_neighbours.at(0));
+    new_ring.m_neighbours.emplace_back(node_id);
+    n_d.emplace_back(new_ring);
+    // FIXME detect if this is this neighbour or other side
+    selected_node->m_neighbours.at(0) = new_ring.m_uid;
+    if (selected_nbr->getNodeType() == NodeType{RING})
+        selected_nbr->m_neighbours.at(1) = new_ring.m_uid;
+    else if (selected_nbr->getNodeType() == NodeType{CIRCLE}) 
+        selected_nbr->m_neighbours.at(0) = new_ring.m_uid;
+    return n_d;
 }
 
 /*Graph add_tri(Graph gr, int node_id) {
@@ -178,42 +210,42 @@ Graph add_ring(Graph gr, int node_id) {
     return gr;
 }*/
 
-/*
+// TODO using node uid to find nodes DOES NOT WORK because uid != vector index
+//      should use a hashmap instead? or will need to search
 Graph add_square(Graph gr, int node_id) {
     if (node_id < 0 || node_id >= (int)gr.node_data.size()) return gr;
     Node *selected_node = &gr.node_data.at(node_id);
     if (selected_node->getNodeType() != NodeType{RING}) return gr;
-    if (gr.edge_data.at(selected_node->m_edges.at(0)).a)getNodeType() != NodeType{RING}) return gr;
+    if (gr.node_data.at(selected_node->m_neighbours.at(0)).getNodeType() != NodeType{RING}) return gr;
     Square new_square = Square(selected_node->m_position);
-
-    Edge *replaced_edge_i    = &gr.edge_data.at(gr.node_data.at(node_id).m_edges.at(0));
-    size_t *edge_i_this_end  = ((int)(replaced_edge_i->a) == node_id) ? &replaced_edge_i->a : &replaced_edge_i->b;
-    size_t *edge_i_other_end = ((int)(replaced_edge_i->a) == node_id) ? &replaced_edge_i->b : &replaced_edge_i->a;
-
-    if (selected_node->getNodeType() == NodeType{RING}) {
-        Edge *replaced_edge_j    = &gr.edge_data.at(gr.node_data.at(node_id).m_edges.at(0));
-        size_t *edge_j_this_end  = ((int)(replaced_edge_j->a) == node_id) ? &replaced_edge_j->a : &replaced_edge_j->b;
-        size_t *edge_j_other_end = ((int)(replaced_edge_j->a) == node_id) ? &replaced_edge_j->b : &replaced_edge_j->a;
-    }
+    std::cout << "Selected node " << node_id << " with neighbour " 
+              << selected_node->m_neighbours.at(0) << " replaced by square " 
+              << new_square.m_uid << "." << std::endl;
 
     Vector2 diffPos = Vector2Subtract(
         gr.node_data.at(node_id).m_position,
-        gr.node_data.at(*edge_i_other_end).m_position
+        gr.node_data.at(selected_node->m_neighbours.at(0)).m_position
     );
-    // 3 positions of square neighbours
-    gr.node_data.at(node_id).m_position = Vector2Add(gr.node_data.at(node_id).m_position, diffPos);
-    gr.node_data.at(node_id).m_position = Vector2Add(gr.node_data.at(node_id).m_position, Vector2Rotate(diffPos, 90));
-    gr.node_data.at(node_id).m_position = Vector2Add(gr.node_data.at(node_id).m_position, Vector2Rotate(diffPos, -90));
+    // positions of 2 unfilled neighbours
+    Circle top_circle = Circle(Vector2Add(gr.node_data.at(node_id).m_position, Vector2Rotate(diffPos, 90)));
+    top_circle.m_neighbours.emplace_back(new_square.m_uid);
+    Circle btm_circle = Circle(Vector2Add(gr.node_data.at(node_id).m_position, Vector2Rotate(diffPos, -90)));
+    btm_circle.m_neighbours.emplace_back(new_square.m_uid);
 
     // replace node in edge connection and make new edge for old node
-    new_ring.m_edges.emplace_back(gr.node_data.at(node_id).m_edges.at(0));
-    *edge_this_end = new_ring.m_uid;
-    gr.edge_data.emplace_back(Edge{new_ring.m_uid, node_id});
-    new_ring.m_edges.emplace_back(gr.edge_data.size() - 1);
-    gr.node_data.at(node_id).m_edges.at(0) = new_ring.m_edges.at(1);
-    gr.node_data.emplace_back(new_ring);
+    new_square.m_neighbours.emplace_back(top_circle.m_uid);
+    new_square.m_neighbours.emplace_back(btm_circle.m_uid);
+    // FIXME detect if this is this neighbour or other side
+    new_square.m_neighbours.emplace_back(selected_node->m_neighbours.at(0));
+    new_square.m_neighbours.emplace_back(selected_node->m_neighbours.at(1));
+    gr.node_data.at(selected_node->m_neighbours.at(0)).m_neighbours.at(1) = new_square.m_uid;
+    gr.node_data.at(selected_node->m_neighbours.at(1)).m_neighbours.at(0) = new_square.m_uid;
+    gr.node_data.erase(gr.node_data.begin() + node_id);
+    gr.node_data.emplace_back(new_square);
+    gr.node_data.emplace_back(top_circle);
+    gr.node_data.emplace_back(btm_circle);
     return gr;
-}*/
+}
 
 void draw_node(Node &nd) {
     switch (nd.getNodeType()) {
@@ -252,23 +284,40 @@ int main() {
     //Graph g = Graph{std::vector<Node *>{&test_circle, &test_ring, &test_tri, &test_square}, std::vector<Edge>{Edge{0,1}}};
 
     Circle starter[2] = {
-        Circle(Vector2{250.f,300.f}),
-        Circle(Vector2{350.f,300.f})
+        Circle(Vector2{SCREEN_WIDTH/2.f - 50.f, SCREEN_HEIGHT/2.f}),
+        Circle(Vector2{SCREEN_WIDTH/2.f + 50.f, SCREEN_HEIGHT/2.f})
     };
 
-    Graph g = Graph{std::vector<Node>{starter[0], starter[1]}, std::vector<Edge>{Edge{0,1}}};
-    g.node_data.at(0).m_edges.emplace_back(0);
-    g.node_data.at(1).m_edges.emplace_back(0);
+    starter[0].m_neighbours.emplace_back(1);
+    starter[1].m_neighbours.emplace_back(0);
 
-    //double dt = 0.f;
+    Graph g = Graph{std::vector<Node>{starter[0], starter[1]}, std::vector<std::pair<size_t,size_t>>{}};
+    g.all_nbrs = refresh_all_nbrs(g.node_data);
+
+    double dt = 0.f;
 
     NodeType create_node_type = {RING};
     bool hit = false;
     int selected_node = {-1};
     Vector2 mousePos = {0.,0.};
 
+    size_t cursor_state = {0};
+    size_t cursor_dest = {1};
+    float cursor_progress = {0.f};
+
     while (!WindowShouldClose()) {
-        //dt = GetFrameTime();
+        dt = GetFrameTime();
+        cursor_progress += dt;
+
+        if (cursor_progress > 1.f) {
+            cursor_state = cursor_dest;
+            Node *cursor_node = &g.node_data.at(cursor_dest);
+            if (cursor_node->getNumNbrs() > 1)
+                cursor_dest = cursor_node->m_neighbours.at(GetRandomValue(0, cursor_node->getNumNbrs()-1));
+            else cursor_dest = cursor_node->m_neighbours.at(0);
+            cursor_progress = 0.f;
+        }
+
         //if (IsKeyReleased(KEY_SPACE)) break;
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             mousePos = GetMousePosition();
@@ -292,19 +341,20 @@ int main() {
         if (IsKeyReleased(KEY_ENTER)) {
             switch (create_node_type) {
             case NodeType{RING}:
-                g = add_ring(g, selected_node);
+                g.node_data = add_ring(g.node_data, selected_node);
                 break;
             case NodeType{TRIANGLE}:
                 //g = add_tri(g, selected_node);
                 std::cout << "Adding triangle not yet implemented." << std::endl;
                 break;
             case NodeType{SQUARE}:
-                //g = add_square(g, selected_node);
-                std::cout << "Adding square not yet implemented." << std::endl;
+                g = add_square(g, selected_node);
+                //std::cout << "Adding square not yet implemented." << std::endl;
                 break;
             default:
                 std::cerr << "Undefined node type selected!" << std::endl;
             }
+            g.all_nbrs = refresh_all_nbrs(g.node_data);
         }
 
         BeginDrawing();
@@ -312,11 +362,24 @@ int main() {
                 
             for (Node nd : g.node_data) draw_node(nd);
 
-            if (selected_node >= 0) DrawCircleLinesV(g.node_data.at(selected_node).m_position, 7, WHITE);
+            if (selected_node >= 0) {
+                DrawRectangle(20,20,200,160,LIGHTGRAY);
+                std::string selected_text = "Selected node: " + std::to_string(g.node_data.at(selected_node).m_uid);
+                for (auto nbr : g.node_data.at(selected_node).m_neighbours)
+                    selected_text.append("\n" + std::to_string(nbr));
+                DrawText(selected_text.c_str(), 30, 40, 18, WHITE);
+                DrawCircleLinesV(g.node_data.at(selected_node).m_position, 7, WHITE);
+            }
 
+            // TODO replace edges with neighbours
             // TODO start edges closer to the other point (i.e. leave gap for sprite)
-            for (auto ej : g.edge_data)
-                DrawLineV(g.node_data.at(ej.a).m_position, g.node_data.at(ej.b).m_position, WHITE);
+            
+            for (auto edge : g.all_nbrs) 
+                DrawLineV(g.node_data.at(edge.first).m_position, g.node_data.at(edge.second).m_position, WHITE);
+            
+            DrawText(std::to_string(cursor_state).c_str(), SCREEN_WIDTH-40, 30, 18, GOLD);
+            DrawText(std::to_string(cursor_dest).c_str(),  SCREEN_WIDTH-40, 60, 18, GOLD);
+            DrawCircleV(Vector2Lerp(g.node_data.at(cursor_state).m_position, g.node_data.at(cursor_dest).m_position, cursor_progress), 10, CURSOR_COL);
 
         EndDrawing();
 
