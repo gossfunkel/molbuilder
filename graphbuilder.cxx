@@ -233,17 +233,17 @@ NodeData add_square(NodeData n_d, int node_id) {
     btm_circle.m_neighbours.emplace_back(new_square.m_uid);
 
     // replace node in edge connection and make new edge for old node
+    new_square.m_neighbours.emplace_back(selected_node->m_neighbours.at(0));
     new_square.m_neighbours.emplace_back(top_circle.m_uid);
+    new_square.m_neighbours.emplace_back(selected_node->m_neighbours.at(1));
     new_square.m_neighbours.emplace_back(btm_circle.m_uid);
     // FIXME detect if this is this neighbour or other side
-    new_square.m_neighbours.emplace_back(selected_node->m_neighbours.at(0));
-    new_square.m_neighbours.emplace_back(selected_node->m_neighbours.at(1));
-    n_d.at(selected_node->m_neighbours.at(0)).m_neighbours.at(1) = new_square.m_uid;
+    selected_nbr->m_neighbours.at(1) = new_square.m_uid;
     n_d.at(selected_node->m_neighbours.at(1)).m_neighbours.at(0) = new_square.m_uid;
-    n_d.erase(node_id);
     n_d.emplace(new_square.m_uid, new_square);
     n_d.emplace(top_circle.m_uid, top_circle);
     n_d.emplace(btm_circle.m_uid, btm_circle);
+    n_d.erase(node_id);
     return n_d;
 }
 
@@ -275,6 +275,10 @@ void draw_node(Node &nd) {
 
 int main() {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Geometric Graph Builder");
+    InitAudioDevice();
+
+    Sound ding_low_c = LoadSound("ding_low_c.wav");
+    Sound bloob_g = LoadSound("bloob_g.wav");
 
     //Circle test_circle = Circle(Vector2{250.f,250.f});
     //Ring test_ring = Ring(Vector2{250.f,350.f});
@@ -308,6 +312,8 @@ int main() {
         if (cursor_progress > 1.f) {
             cursor_state = cursor_dest;
             Node *cursor_node = &g.node_data.at(cursor_dest);
+            if (cursor_node->getNodeType() == NodeType{CIRCLE}) PlaySound(ding_low_c);
+            else PlaySound(bloob_g);
             if (cursor_node->getNumNbrs() > 1)
                 cursor_dest = cursor_node->m_neighbours.at(GetRandomValue(0, cursor_node->getNumNbrs()-1));
             else cursor_dest = cursor_node->m_neighbours.at(0);
@@ -380,6 +386,9 @@ int main() {
         EndDrawing();
 
     }
+    UnloadSound(ding_low_c);
+    UnloadSound(bloob_g);
+    CloseAudioDevice();
     CloseWindow();
     return 0;
 }
