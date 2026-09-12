@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <vector>
 #include <ranges>
+#include <unordered_map>
 
 #define TAU (M_PI*2.f)
 
@@ -81,8 +82,8 @@ public:
 
 size_t Node::num_nodes = 0;
 
+typedef std::unordered_map<size_t, Node> NodeData;
 typedef std::vector<std::pair<size_t,size_t>> NbrPairs;
-typedef std::vector<Node> NodeData;
 
 typedef struct Graph {
     NodeData node_data;
@@ -92,7 +93,7 @@ typedef struct Graph {
 // TODO can i use std::views::join / std::views::join_with or suchlike?
 NbrPairs refresh_all_nbrs(NodeData node_data) {
     NbrPairs new_pairs;
-    for (auto nd : node_data) 
+    for (const auto& [uid, nd] : node_data)
         for (auto nb : nd.m_neighbours) new_pairs.emplace_back(nd.m_uid, nb);
     std::ranges::sort(new_pairs);
     const auto rm = std::ranges::unique(new_pairs);
@@ -167,7 +168,7 @@ NodeData add_ring(NodeData n_d, int node_id) {
     // add neighbours 
     new_ring.m_neighbours.emplace_back(selected_node->m_neighbours.at(0));
     new_ring.m_neighbours.emplace_back(node_id);
-    n_d.emplace_back(new_ring);
+    n_d.emplace(new_ring.m_uid, new_ring);
     // FIXME detect if this is this neighbour or other side
     selected_node->m_neighbours.at(0) = new_ring.m_uid;
     if (selected_nbr->getNodeType() == NodeType{RING})
@@ -210,26 +211,25 @@ NodeData add_ring(NodeData n_d, int node_id) {
     return gr;
 }*/
 
-// TODO using node uid to find nodes DOES NOT WORK because uid != vector index
-//      should use a hashmap instead? or will need to search
-Graph add_square(Graph gr, int node_id) {
-    if (node_id < 0 || node_id >= (int)gr.node_data.size()) return gr;
-    Node *selected_node = &gr.node_data.at(node_id);
-    if (selected_node->getNodeType() != NodeType{RING}) return gr;
-    if (gr.node_data.at(selected_node->m_neighbours.at(0)).getNodeType() != NodeType{RING}) return gr;
+NodeData add_square(NodeData n_d, int node_id) {
+    if (node_id < 0 || node_id >= (int)n_d.size()) return n_d;
+    Node *selected_node = &n_d.at(node_id);
+    Node *selected_nbr  = &n_d.at(selected_node->m_neighbours.at(0));
+    if (selected_node->getNodeType() != NodeType{RING}
+     || selected_nbr->getNodeType() != NodeType{RING}) return n_d;
     Square new_square = Square(selected_node->m_position);
     std::cout << "Selected node " << node_id << " with neighbour " 
               << selected_node->m_neighbours.at(0) << " replaced by square " 
               << new_square.m_uid << "." << std::endl;
 
     Vector2 diffPos = Vector2Subtract(
-        gr.node_data.at(node_id).m_position,
-        gr.node_data.at(selected_node->m_neighbours.at(0)).m_position
+        n_d.at(node_id).m_position,
+        n_d.at(selected_node->m_neighbours.at(0)).m_position
     );
     // positions of 2 unfilled neighbours
-    Circle top_circle = Circle(Vector2Add(gr.node_data.at(node_id).m_position, Vector2Rotate(diffPos, 90)));
+    Circle top_circle = Circle(Vector2Add(n_d.at(node_id).m_position, Vector2Rotate(diffPos, 90)));
     top_circle.m_neighbours.emplace_back(new_square.m_uid);
-    Circle btm_circle = Circle(Vector2Add(gr.node_data.at(node_id).m_position, Vector2Rotate(diffPos, -90)));
+    Circle btm_circle = Circle(Vector2Add(n_d.at(node_id).m_position, Vector2Rotate(diffPos, -90)));
     btm_circle.m_neighbours.emplace_back(new_square.m_uid);
 
     // replace node in edge connection and make new edge for old node
@@ -238,13 +238,13 @@ Graph add_square(Graph gr, int node_id) {
     // FIXME detect if this is this neighbour or other side
     new_square.m_neighbours.emplace_back(selected_node->m_neighbours.at(0));
     new_square.m_neighbours.emplace_back(selected_node->m_neighbours.at(1));
-    gr.node_data.at(selected_node->m_neighbours.at(0)).m_neighbours.at(1) = new_square.m_uid;
-    gr.node_data.at(selected_node->m_neighbours.at(1)).m_neighbours.at(0) = new_square.m_uid;
-    gr.node_data.erase(gr.node_data.begin() + node_id);
-    gr.node_data.emplace_back(new_square);
-    gr.node_data.emplace_back(top_circle);
-    gr.node_data.emplace_back(btm_circle);
-    return gr;
+    n_d.at(selected_node->m_neighbours.at(0)).m_neighbours.at(1) = new_square.m_uid;
+    n_d.at(selected_node->m_neighbours.at(1)).m_neighbours.at(0) = new_square.m_uid;
+    n_d.erase(node_id);
+    n_d.emplace(new_square.m_uid, new_square);
+    n_d.emplace(top_circle.m_uid, top_circle);
+    n_d.emplace(btm_circle.m_uid, btm_circle);
+    return n_d;
 }
 
 void draw_node(Node &nd) {
@@ -283,15 +283,11 @@ int main() {
 
     //Graph g = Graph{std::vector<Node *>{&test_circle, &test_ring, &test_tri, &test_square}, std::vector<Edge>{Edge{0,1}}};
 
-    Circle starter[2] = {
-        Circle(Vector2{SCREEN_WIDTH/2.f - 50.f, SCREEN_HEIGHT/2.f}),
-        Circle(Vector2{SCREEN_WIDTH/2.f + 50.f, SCREEN_HEIGHT/2.f})
-    };
-
-    starter[0].m_neighbours.emplace_back(1);
-    starter[1].m_neighbours.emplace_back(0);
-
-    Graph g = Graph{std::vector<Node>{starter[0], starter[1]}, std::vector<std::pair<size_t,size_t>>{}};
+    Graph g = Graph{NodeData{}, NbrPairs{}};
+    g.node_data.emplace(0, Circle(Vector2{SCREEN_WIDTH/2.f - 50.f, SCREEN_HEIGHT/2.f}));
+    g.node_data.emplace(1, Circle(Vector2{SCREEN_WIDTH/2.f + 50.f, SCREEN_HEIGHT/2.f}));
+    g.node_data.at(0).m_neighbours.emplace_back(1);
+    g.node_data.at(1).m_neighbours.emplace_back(0);
     g.all_nbrs = refresh_all_nbrs(g.node_data);
 
     double dt = 0.f;
@@ -321,9 +317,9 @@ int main() {
         //if (IsKeyReleased(KEY_SPACE)) break;
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             mousePos = GetMousePosition();
-            for (auto nd : g.node_data)
+            for (auto& [uid, nd] : g.node_data)
                 if (CheckCollisionPointCircle(mousePos, nd.m_position, 10)) {
-                    selected_node = nd.m_uid;
+                    selected_node = uid;
                     hit = true;
                 }
             if (!hit) selected_node = -1;
@@ -348,7 +344,7 @@ int main() {
                 std::cout << "Adding triangle not yet implemented." << std::endl;
                 break;
             case NodeType{SQUARE}:
-                g = add_square(g, selected_node);
+                g.node_data = add_square(g.node_data, selected_node);
                 //std::cout << "Adding square not yet implemented." << std::endl;
                 break;
             default:
@@ -360,7 +356,7 @@ int main() {
         BeginDrawing();
             ClearBackground(BLACK);
                 
-            for (Node nd : g.node_data) draw_node(nd);
+            for (auto& [uid, nd] : g.node_data) draw_node(nd);
 
             if (selected_node >= 0) {
                 DrawRectangle(20,20,200,160,LIGHTGRAY);
@@ -374,8 +370,8 @@ int main() {
             // TODO replace edges with neighbours
             // TODO start edges closer to the other point (i.e. leave gap for sprite)
             
-            for (auto edge : g.all_nbrs) 
-                DrawLineV(g.node_data.at(edge.first).m_position, g.node_data.at(edge.second).m_position, WHITE);
+            for (auto& [first, second] : g.all_nbrs) 
+                DrawLineV(g.node_data.at(first).m_position, g.node_data.at(second).m_position, WHITE);
             
             DrawText(std::to_string(cursor_state).c_str(), SCREEN_WIDTH-40, 30, 18, GOLD);
             DrawText(std::to_string(cursor_dest).c_str(),  SCREEN_WIDTH-40, 60, 18, GOLD);
