@@ -278,7 +278,8 @@ int main() {
     InitAudioDevice();
 
     Sound ding_low_c = LoadSound("ding_low_c.wav");
-    Sound bloob_g = LoadSound("bloob_g.wav");
+    Sound pluck_d    = LoadSound("pluck_d.wav");
+    Sound bloob_g    = LoadSound("bloob_g.wav");
 
     //Circle test_circle = Circle(Vector2{250.f,250.f});
     //Ring test_ring = Ring(Vector2{250.f,350.f});
@@ -313,6 +314,7 @@ int main() {
             cursor_state = cursor_dest;
             Node *cursor_node = &g.node_data.at(cursor_dest);
             if (cursor_node->getNodeType() == NodeType{CIRCLE}) PlaySound(ding_low_c);
+            else if (cursor_node->getNodeType() == NodeType{RING}) PlaySound(pluck_d);
             else PlaySound(bloob_g);
             if (cursor_node->getNumNbrs() > 1)
                 cursor_dest = cursor_node->m_neighbours.at(GetRandomValue(0, cursor_node->getNumNbrs()-1));
@@ -387,6 +389,7 @@ int main() {
 
     }
     UnloadSound(ding_low_c);
+    UnloadSound(pluck_d);
     UnloadSound(bloob_g);
     CloseAudioDevice();
     CloseWindow();
