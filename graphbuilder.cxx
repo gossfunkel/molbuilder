@@ -148,11 +148,11 @@ public:
 
 // TODO use std::pairs / std::ranges::views::pairwise instead of the edges thing?
 
-NodeData add_ring(NodeData n_d, int node_id) {
-    if (node_id < 0 || node_id >= (int)n_d.size()) return n_d;
-    Node *selected_node = &n_d.at(node_id);
-    Node *selected_nbr  = &n_d.at(selected_node->m_neighbours.at(0));
-    if (selected_node->getNodeType() != NodeType{CIRCLE}) return n_d;
+int add_ring(NodeData *n_d, int node_id) {
+    if (node_id < 0 || node_id >= (int)n_d->size()) return -1;
+    Node *selected_node = &n_d->at(node_id);
+    Node *selected_nbr  = &n_d->at(selected_node->m_neighbours.at(0));
+    if (selected_node->getNodeType() != NodeType{CIRCLE}) return -1;
     Ring new_ring = Ring(selected_node->m_position);
     std::cout << "Selected node " << node_id << " with neighbour " 
               << selected_node->m_neighbours.at(0) << " replaced by ring " 
@@ -168,14 +168,14 @@ NodeData add_ring(NodeData n_d, int node_id) {
     // add neighbours 
     new_ring.m_neighbours.emplace_back(selected_node->m_neighbours.at(0));
     new_ring.m_neighbours.emplace_back(node_id);
-    n_d.emplace(new_ring.m_uid, new_ring);
+    n_d->emplace(new_ring.m_uid, new_ring);
     // FIXME detect if this is this neighbour or other side
     selected_node->m_neighbours.at(0) = new_ring.m_uid;
     if (selected_nbr->getNodeType() == NodeType{RING})
         selected_nbr->m_neighbours.at(1) = new_ring.m_uid;
     else if (selected_nbr->getNodeType() == NodeType{CIRCLE}) 
         selected_nbr->m_neighbours.at(0) = new_ring.m_uid;
-    return n_d;
+    return new_ring.m_uid;
 }
 
 /*Graph add_tri(Graph gr, int node_id) {
@@ -211,25 +211,25 @@ NodeData add_ring(NodeData n_d, int node_id) {
     return gr;
 }*/
 
-NodeData add_square(NodeData n_d, int node_id) {
-    if (node_id < 0 || node_id >= (int)n_d.size()) return n_d;
-    Node *selected_node = &n_d.at(node_id);
-    Node *selected_nbr  = &n_d.at(selected_node->m_neighbours.at(0));
+int add_square(NodeData *n_d, int node_id) {
+    if (node_id < 0 || node_id >= (int)n_d->size()) return -1;
+    Node *selected_node = &n_d->at(node_id);
+    Node *selected_nbr  = &n_d->at(selected_node->m_neighbours.at(0));
     if (selected_node->getNodeType() != NodeType{RING}
-     || selected_nbr->getNodeType() != NodeType{RING}) return n_d;
+     || selected_nbr->getNodeType() != NodeType{RING}) return -1;
     Square new_square = Square(selected_node->m_position);
     std::cout << "Selected node " << node_id << " with neighbour " 
               << selected_node->m_neighbours.at(0) << " replaced by square " 
               << new_square.m_uid << "." << std::endl;
 
     Vector2 diffPos = Vector2Subtract(
-        n_d.at(node_id).m_position,
-        n_d.at(selected_node->m_neighbours.at(0)).m_position
+        selected_node->m_position,
+        selected_nbr->m_position
     );
     // positions of 2 unfilled neighbours
-    Circle top_circle = Circle(Vector2Add(n_d.at(node_id).m_position, Vector2Rotate(diffPos, 90)));
+    Circle top_circle = Circle(Vector2Add(selected_node->m_position, Vector2Rotate(diffPos, 90)));
     top_circle.m_neighbours.emplace_back(new_square.m_uid);
-    Circle btm_circle = Circle(Vector2Add(n_d.at(node_id).m_position, Vector2Rotate(diffPos, -90)));
+    Circle btm_circle = Circle(Vector2Add(selected_node->m_position, Vector2Rotate(diffPos, -90)));
     btm_circle.m_neighbours.emplace_back(new_square.m_uid);
 
     // replace node in edge connection and make new edge for old node
@@ -239,12 +239,12 @@ NodeData add_square(NodeData n_d, int node_id) {
     new_square.m_neighbours.emplace_back(btm_circle.m_uid);
     // FIXME detect if this is this neighbour or other side
     selected_nbr->m_neighbours.at(1) = new_square.m_uid;
-    n_d.at(selected_node->m_neighbours.at(1)).m_neighbours.at(0) = new_square.m_uid;
-    n_d.emplace(new_square.m_uid, new_square);
-    n_d.emplace(top_circle.m_uid, top_circle);
-    n_d.emplace(btm_circle.m_uid, btm_circle);
-    n_d.erase(node_id);
-    return n_d;
+    n_d->at(selected_node->m_neighbours.at(1)).m_neighbours.at(0) = new_square.m_uid;
+    n_d->emplace(new_square.m_uid, new_square);
+    n_d->emplace(top_circle.m_uid, top_circle);
+    n_d->emplace(btm_circle.m_uid, btm_circle);
+    n_d->erase(node_id);
+    return new_square.m_uid;
 }
 
 void draw_node(Node &nd) {
@@ -343,22 +343,25 @@ int main() {
         }
 
         if (IsKeyReleased(KEY_ENTER)) {
+            int new_node_uid;
             switch (create_node_type) {
             case NodeType{RING}:
-                g.node_data = add_ring(g.node_data, selected_node);
+                new_node_uid = add_ring(&g.node_data, selected_node);
+                break;
+            case NodeType{SQUARE}:
+                new_node_uid = add_square(&g.node_data, selected_node);
                 break;
             case NodeType{TRIANGLE}:
                 //g = add_tri(g, selected_node);
                 std::cout << "Adding triangle not yet implemented." << std::endl;
-                break;
-            case NodeType{SQUARE}:
-                g.node_data = add_square(g.node_data, selected_node);
-                //std::cout << "Adding square not yet implemented." << std::endl;
-                break;
             default:
-                std::cerr << "Undefined node type selected!" << std::endl;
+                new_node_uid = -1;
             }
-            g.all_nbrs = refresh_all_nbrs(g.node_data);
+            if (new_node_uid >= 0) {
+                if (cursor_state == selected_node) cursor_state = new_node_uid;
+                if (cursor_dest == selected_node) cursor_dest = new_node_uid;
+                g.all_nbrs = refresh_all_nbrs(g.node_data);
+            }
         }
 
         BeginDrawing();
