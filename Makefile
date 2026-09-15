@@ -14,3 +14,9 @@ graphbuilder:
 
 h-molbuilder:
 	cabal run
+
+test_graph:
+	g++ test_graph.cxx $(CPPFLAGS) -o test_graph.exe
+
+nodePong:
+	g++ nodePong.cxx $(CPPFLAGS) -o nodePong.exe
