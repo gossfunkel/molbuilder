@@ -7,7 +7,7 @@
 #define SCREEN_WIDTH 1100
 #define SCREEN_HEIGHT 1100
 
-#define NUM_SOUNDS 5
+#define NUM_SOUNDS 6
 
 #define coord_to_position(coord) Vector2{(float)(coord).first  * 20.f + 50.f, \
 										 (float)(coord).second * 20.f + 50.f}
@@ -23,7 +23,8 @@ int main() {
     	LoadSound("pluck_d.wav"),
     	LoadSound("pluck_e.wav"),
     	LoadSound("pluck_f.wav"),
-    	LoadSound("shaker.wav")
+    	LoadSound("shaker.wav"),
+    	LoadSound("kick.wav")
     };
 
 	Graph main_graph = Graph{};
@@ -35,7 +36,6 @@ int main() {
     Vector2 mousePos = {0.f,0.f};
 
     Edge cursor_edge = get_edges(main_graph).at(0);
-   	double cursor_progress = {0.f};
 
 	auto contains_either = [&](auto e) mutable {
 		if (e.first == cursor_edge.second || e.second == cursor_edge.second) 
@@ -43,18 +43,21 @@ int main() {
 		else return false; 
 	};
 
-	double dt = 0.;
-	double shaker_timer = 0.;
+	double dt 			   = {0.};
+	double global_timer    = {0.};
+	double prev_timer 	   = {0.};
+   	double cursor_progress = {0.};
 
     while (!WindowShouldClose()) {
     	dt = GetFrameTime();
-    	shaker_timer += dt;
-    	if (shaker_timer > .5) {
+    	prev_timer = global_timer;
+    	global_timer += dt;
+    	if (fmod(global_timer, .5) < fmod(prev_timer, .5))
+    		PlaySound(fx.at(5)); // kick
+    	if (fmod(global_timer, .25) < fmod(prev_timer, .25))
     		PlaySound(fx.at(4));
-    		shaker_timer = 0.;
-    	}
-    	cursor_progress += dt;
-    	if (cursor_progress > 1.) {
+    	cursor_progress = fmod(global_timer, 1.);
+    	if (cursor_progress < fmod(prev_timer, 1.)) {
     		if (get_node(main_graph, cursor_edge.second) < 4)
     			PlaySound(fx.at(get_node(main_graph, cursor_edge.second) - 1));
     		else PlaySound(fx.at(3));
@@ -68,7 +71,6 @@ int main() {
 				cursor_edge.second = eg.first;
 				cursor_edge.first = eg.second;
 			}
-    		cursor_progress = 0.;
     	}
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             node_selected = false;
