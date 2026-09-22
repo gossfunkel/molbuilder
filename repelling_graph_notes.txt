@@ -1,0 +1,109 @@
+2        1
+ \       |
+  1 ---- O ---- 1 ---- 2
+ /				|
+2				2
+
+O is fixed
+
+edge length is strictly constrained; nodes have 1 degree of freedom for each unfixed neighbour
+
+edge angle is negotiated by repulsion from co-neighbouring nodes within this constraint
+
+note: the repulsive force modelled is between co-neighbours of a common 'anchoring' neighbour
+
+node 0 is fixed; all forces that would act on it are reflected on their origin
+
+====
+
+1) label nodes with steps to origin (dijkstra's)
+2) proceed through graph by visiting neighbours of greater or equal steps only
+3) for each node:
+	a) do physics calculations between all neighbours
+	b) rotate neighbours and their children
+
+Problem: 
+	There are many solutions to the constraint problem for a loop. 
+	The fixed origin should simplify it to one.
+	Constraints must build off the origin; if a node moves
+
+move_nbrs(0);
+
+void move_nbrs (NodeMap nodes, size_t node_id) {
+	num_nbrs = nodes[node_id].nbrs.length();
+	for (auto nbr_id : nodes[node_id].nbrs) {
+		nodes[nbr_id].pos -= distance (nodes[nbr_id].pos, nodes[(nbr_id + 1) % num_nbrs].pos);
+		nodes[nbr_id].pos += distance (nodes[nbr_id].pos, nodes[(nbr_id - 1) % num_nbrs].pos);
+		nodes[nbr_id].pos = EDGE_LEN * normalise ( distance ( nodes[nbr_id].pos, nodes[node_id].pos ) );
+		move_nbrs(nbr_id);
+	}
+}
+
+layers/loop management:
+
+parse_children(node) { 
+	for (auto nbr : node.nbrs)
+		calculate angular component of nbr repulsion (rotate whole subtree around node)
+	for (auto nbr : node.nbrs)
+		parse_children(nbr)
+}
+
+constraint dependency problem:
+
+    Oa
+   / \
+  Ob  Oc
+ / \ / \
+Od  Oe  Of
+ \ /
+  Og
+
+  a - fixed
+  a) phys (b,c)
+  > e constrained move
+  >> g constrained move
+  >>> d constrained move
+  b) phys (d,e) (a fixed)
+  > a reactive push back?
+  > c constrained move
+  >> a reactive push back?
+  >> f constrained move
+  > g constrained move
+  d) phys (b,g)
+  > e constrained move
+  >> c constrained move
+  >>> a reactive push back?
+  >>> f constrained move
+  g) phys (d,e)
+  > b constrained move
+  >> a reactive push back?
+  > c constrained move
+  >> a reactive push back?
+  >> f constrained move
+  e) phys (b,c,g)
+  > a reactive push back?
+  > d constrained move
+  > f constrained move
+  c) phys (e,f) (a fixed)
+  > a reactive push back?
+  > b constrained move
+  >> a reactive push back?
+  >> d constrained move
+  >>> g constrained move
+  > g constrained move
+  > f constrained move
+  e) previously calculated
+  f) one nbr
+
+INSTEAD OF CONSTRAINING AFTER, WE NEED TO CONSTRAIN THE FORCE FIRST
+
+   O---O
+  /     \
+ /       \
+O         O
+ \_     _/
+   \_ _/
+     O
+
+1) apply repulsive force from all other nodes
+2) find closest intersection of all edge length from neighbours
