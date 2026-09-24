@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <iterator>
 #include <vector>
 #include <unordered_map>
 #include <iostream>
@@ -6,34 +7,43 @@
 template <typename DataType>
 struct Node {
 	DataType n_data;
+	size_t layer;
 	std::vector<Node*> edges;
 };
 
 template <typename DataType>
-class NodeIterator : std::vector<Node*>::Iterator{
+class NodeIterator {
 public:
+	NodeIterator<DataType>(std::vector<Node<DataType>*> vec, size_t idx) {
+		_it = vec.at(idx);
+		_prev = (idx == 0) ? vec.at(vec.size() - 1) : vec.at(idx - 1);
+		_next = (idx == vec.size() - 1) ? vec.at(0) : vec.at(idx + 1);
+	}
+	~NodeIterator<DataType>() {}
 
 	NodeIterator<DataType> next() {
-		
-		return NodeIterator<DataType>(++_ptr);
+		return _next;
 	}
 
 	NodeIterator<DataType> prev() {
-		return NodeIterator<DataType>(--_ptr, --_prev, --_next);
+		return _prev;
 	}
 
 protected:
-	Node<DataType>* _ptr;
+	std::vector<Node<DataType>*>::Iterator _it;
+	std::vector<Node<DataType>*>::Iterator _prev;
+	std::vector<Node<DataType>*>::Iterator _next;
 }
 
 template <typename DataType>
 class GraphIterator {
 public:
 	using iterator_category = std::random_access_iterator_tag;
-	using value_type = Node<DataType>;
-	using difference_type = std::ptr_diff_t;
-	using pointer = std::ptr_t;
-	using reference = Node<DataType>&;
+	using value_type      = Node<DataType>;
+	using element_type    = value_type;
+	using difference_type = std::ptrdiff_t;
+	using pointer         = value_type*;
+	using reference       = value_type&;
 
 public:
 	GraphIterator(Graph<DataType>& graph = nullptr, size_t id = 0) {
@@ -52,7 +62,7 @@ public:
 		return (*this);
 	}
 
-	operator bool() const {
+    operator bool() const {
         return (_id >= _graph.size()) ? true : false;
     }
 
@@ -311,6 +321,20 @@ public:
 
 	DataType& at(size_t idx) {
 		return _nodes[idx];
+	}
+
+	void insert(size_t idx, Node<DataType> node) {
+		size_t lowest_layer = 25565; // FIXME
+		for (auto edge : node.edges) { 
+			edge.edges.emplace_back(edge(idx));
+			if (edge.layer < lowest_layer) lowest_layer = edge.layer;
+		}
+		node.layer = 1 + lowest neighbour layer;
+		_nodes[idx] = node;
+	}
+
+	void emplace_back(Node<DataType> node) {
+		insert(_nodes.size(), node);
 	}
 };
 
