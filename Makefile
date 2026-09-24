@@ -20,3 +20,6 @@ test_graph:
 
 nodePong:
 	g++ nodePong.cxx $(CPPFLAGS) -o nodePong.exe
+
+test_gen_graph:
+	g++ test_gen_graph.cxx $(CPPFLAGS) -o test_gen_graph.exe

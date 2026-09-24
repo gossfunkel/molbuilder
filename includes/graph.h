@@ -12,7 +12,7 @@
 
 /*
  * Intended optimisations:
- * 	Single point of read/write access to edges (no potential mismatches) for:
+ * 	Single point of read/write acces to edges (no potential mismatches) for:
  * - modifying edges: fast lookup of neighbour from node
  * - drawing edges: view of unique list of edges
  * Implementation:
@@ -20,9 +20,6 @@
  *  Let's just track each node's neighbours and calculate the edges by
  * 		removing duplicates when we need to.
  */
-
-// TODO just make a graph iterator already
-
 
 //#define MAX_EDGES 4
 #define EDGE_VEC Vector2{0., -25.}
@@ -34,16 +31,10 @@ typedef struct {
 	std::vector<size_t> edges;
 } Node;
 
-typedef struct {
-	std::unordered_map<size_t, Node> nodes;
-	std::vector<std::vector<size_t>> layers;
-} 
+typedef std::unordered_map<size_t, Node> Graph;
 
 // FIXME deal with cyclic constraints
 void move_nodes(Graph g, double dt) {
-	for (auto layer_nodes : g.layers) {
-
-	}
 	for (auto [id, node] : g) {
 		size_t num_nbrs = node.nbrs.length();
 		if (num_nbrs <= 1) continue;
