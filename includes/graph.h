@@ -12,11 +12,11 @@
 
 /*
  * Intended optimisations:
- * 	Single point of read/write acces to edges (no potential mismatches) for:
- * - modifying edges: fast lookup of neighbour from node
+ * 	Single point of read/write access to edges (no potential mismatches) for:
+ * - modifying edges and values: fast lookup of neighbour from node
  * - drawing edges: view of unique list of edges
  * Implementation:
- * 	Adjacency matrix has redundancies (worse for bigger data). 
+ * 	Adjacency matrix is size-expensive. 
  *  Let's just track each node's neighbours and calculate the edges by
  * 		removing duplicates when we need to.
  */

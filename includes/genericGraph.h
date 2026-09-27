@@ -8,24 +8,24 @@ template <typename DataType>
 struct Node {
 	DataType n_data;
 	size_t layer;
-	std::vector<Node*> edges;
+	std::vector<Node<DataType>*> edges;
 };
 
 template <typename DataType>
 class NodeIterator {
 public:
-	NodeIterator<DataType>(std::vector<Node<DataType>*> vec, size_t idx) {
+	NodeIterator(std::vector<Node<DataType>*> vec, size_t idx) {
 		_it = vec.at(idx);
 		_prev = (idx == 0) ? vec.at(vec.size() - 1) : vec.at(idx - 1);
 		_next = (idx == vec.size() - 1) ? vec.at(0) : vec.at(idx + 1);
 	}
-	~NodeIterator<DataType>() {}
+	~NodeIterator() {}
 
-	NodeIterator<DataType> next() {
+	NodeIterator next() {
 		return _next;
 	}
 
-	NodeIterator<DataType> prev() {
+	NodeIterator prev() {
 		return _prev;
 	}
 
@@ -33,238 +33,62 @@ protected:
 	std::vector<Node<DataType>*>::Iterator _it;
 	std::vector<Node<DataType>*>::Iterator _prev;
 	std::vector<Node<DataType>*>::Iterator _next;
-}
-
-template <typename DataType>
-class GraphIterator {
-public:
-	using iterator_category = std::random_access_iterator_tag;
-	using value_type      = Node<DataType>;
-	using element_type    = value_type;
-	using difference_type = std::ptrdiff_t;
-	using pointer         = value_type*;
-	using reference       = value_type&;
-
-public:
-	GraphIterator(Graph<DataType>& graph = nullptr, size_t id = 0) {
-		_id = id;
-		_graph = graph;
-	}
-
-	GraphIterator(const GraphIterator<DataType> it) = default;
-
-	~GraphIterator() {
-	}
-
-	GraphIterator<DataType>& operator=(const GraphIterator<DataType> it) = default;
-	GraphIterator<DataType>& operator=(int id) {
-		_id = id % _graph.size();
-		return (*this);
-	}
-
-    operator bool() const {
-        return (_id >= _graph.size()) ? true : false;
-    }
-
-    bool operator==(const GraphIterator<DataType> it) const {
-    	return (_id == it.getConstID());
-    }
-    bool operator!=(const GraphIterator<DataType> it) const {
-    	return (_id != it.getConstID());
-    }
-
-    // TODO step through neighbours
-    GraphIterator<DataType>& operator+=(const difference_type& step) {
-    	_id = (_id + step) % _graph.size();
-    	return (*this);
-    }
-    GraphIterator<DataType>& operator-=(const difference_type& step) {
-    	_id = (_id - step) % _graph.size();
-    	return (*this);
-    }
-
-    GraphIterator<DataType>& operator++() {
-    	if (_id == _graph.size() - 1) _id = 0;
-    	else ++_id;
-    	return (*this);
-    }
-
-    GraphIterator<DataType>& operator--() {
-    	if (_id == 0) _id = _graph.size() - 1;
-    	else --_id;
-    	return (*this);
-    }
-
-    GraphIterator<DataType> operator++(int) {
-    	auto temp(*this);
-    	if (_id == _graph.size() - 1) _id = 0;
-    	else ++_id;
-    	return temp;
-    }
-
-    GraphIterator<DataType> operator--(int) {
-    	auto temp = *this;
-    	if (_id == 0) _id = _graph.size() - 1;
-    	else --_id;
-    	return temp;
-    }
-
-    GraphIterator<DataType> operator+(const difference_type& step) {
-    	auto old = _id;
-    	_id = (_id + step) % _graph.size();
-    	auto temp = *this;
-    	_id = old;
-    	return temp;
-    }
-
-    GraphIterator<DataType> operator-(const difference_type& step) {
-    	auto old = _id;
-    	_id = (_id - step) % _graph.size();
-    	auto temp = *this;
-    	_id = old;
-    	return temp;
-    }
-
-    difference_type operator-(const GraphIterator<DataType>& it) {
-    	auto itid = it.getConstID();
-    	return (itid > _id) ? _id + (_graph.size() - itid) : itid - _id;
-    }
-
-    Node<DataType>& operator*() {
-    	return _graph.at(_id);
-    }
-
-    const Node<DataType>& operator*() const {
-    	return _graph.at(_id);
-    }
-
-    Node<DataType>* operator->() {
-    	return *_graph.at(_id);
-    }
-
-    size_t getID() const {
-    	return _id;
-    }
-
-    const size_t getConstID() const {
-    	return _id;
-    }
-
-    Node<DataType>* getPtr() const {
-    	return *_graph.at(_id);
-    }
-
-    const Node<DataType>* getConstPtr() const {
-    	return *_graph.at(_id);
-    }
-
-protected:
-	size_t _id;
-	Graph<DataType>& _graph;
-};
-
-template <typename DataType>
-class GraphReverseIterator<DataType> : GraphIterator<DataType> {
-public:
-	GraphReverseIterator(Graph<DataType>& graph = nullptr, size_t id = 0) :
-		GraphIterator<DataType>(graph, id) {
-	}
-
-	GraphReverseIterator(const GraphIterator<DataType>& it) {
-		this._id = it.getID();
-	}
-
-	GraphReverseIterator(const GraphReverseIterator<DataType>& it) = default;
-
-	~GraphReverseIterator(){
-	}
-
-	GraphReverseIterator<DataType>& operator=(const GraphReverseIterator<DataType>& it) = default;
-
-	GraphReverseIterator<DataType>& operator=(const GraphIterator<DataType>& it) {
-		this->_id = it.getID() % _graph.size();
-		return (*this);
-	}
-
-	GraphReverseIterator<DataType>& operator=(size_t idx) {
-		this->_id = idx % _graph.size();
-		return (*this);
-	}
-
-	GraphReverseIterator<DataType>& operator+=(const difference_type& step) {
-    	_id = (_id - step) % _graph.size();
-    	return (*this);
-    }
-
-	GraphReverseIterator<DataType>& operator-=(const difference_type& step) {
-    	_id = (_id + step) % _graph.size();
-    	return (*this);
-    }
-
-	GraphReverseIterator<DataType>& operator++() {
-    	if (_id == 0) _id = _graph.size() - 1;
-    	else --_id;
-    	return (*this);
-    }
-
-	GraphReverseIterator<DataType>& operator--() {
-    	if (_id == _graph.size() - 1) _id = 0;
-    	else ++_id;
-    	return (*this);
-    }
-
-	GraphReverseIterator<DataType> operator++(int) {
-    	auto temp = *this;
-    	if (_id == 0) _id = _graph.size() - 1;
-    	else --_id;
-    	return temp;
-    }
-
-	GraphReverseIterator<DataType> operator--(int) {
-    	auto temp(*this);
-    	if (_id == _graph.size() - 1) _id = 0;
-    	else ++_id;
-    	return temp;
-    }
-
-	GraphReverseIterator<DataType> operator+(const difference_type& step) {
-    	auto old = _id;
-    	_id = (_id - step) % _graph.size();
-    	auto temp = *this;
-    	_id = old;
-    	return temp;
-    }
-
-	GraphReverseIterator<DataType> operator-(const difference_type& step) {
-    	auto old = _id;
-    	_id = (_id + step) % _graph.size();
-    	auto temp = *this;
-    	_id = old;
-    	return temp;
-    }
-
-	difference_type operator-(const GraphReverseIterator<DataType>& it) {
-    	auto itid = it.getConstID();
-    	return (itid <= _id) ? itid - _id : _id + (_graph.size() - itid);
-    }
-
-	GraphIterator<DataType> base() {
-		GraphIterator<DataType> fwd = GraphIterator<DataType>(this->_id);
-		++fwd;
-		return fwd;
-	}
 };
 
 template <typename DataType>
 class Graph {
 protected:
-	std::unordered_map<Node<DataType>> _nodes;
+	std::unordered_map<size_t, Node<DataType>> _nodes;
 public:
-	typedef GraphIterator<DataType> iterator;
-	typedef GraphIterator<const DataType> const_iterator;
+	struct Iterator {
+		using iterator_category = std::random_access_iterator_tag;
+		using difference_type = std::ptrdiff_t;
+		using value_type = Node<DataType>;
+		using pointer = value_type*;
+		using reference = value_type&;
 
-	typedef GraphReverseIterator<DataType> reverse_iterator;
-	typedef GraphReverseIterator<const DataType> const_reverse_iterator;
+		Iterator(pointer ptr) : _ptr(ptr){}
+
+		reference operator*() const {
+			return *_ptr;
+		}
+
+		pointer operator->() {
+			return _ptr;
+		}
+
+		Iterator& operator++() {
+			++_ptr;
+			return *this;
+		}
+
+		Iterator& operator--() {
+			--_ptr;
+			return *this;
+		}
+
+		Iterator operator++(int) {
+			Iterator tmp = *this;
+			++(*this);
+			return tmp;
+		}
+
+		Iterator operator--(int) {
+			Iterator tmp = *this;
+			--(*this);
+			return tmp;
+		}
+
+		friend bool operator==(const Iterator& a, const Iterator& b) {
+			return a._ptr == b._ptr;
+		}
+
+		friend bool operator!=(const Iterator& a, const Iterator& b) {
+			return a._ptr != b._ptr;
+		}
+	protected:
+		pointer _ptr;
+	};
 
 	Graph() {
 	};
@@ -281,16 +105,25 @@ public:
 	~Graph(){
 	}
 
-	friend std::ostream& operator<<(std::ostream& os, const Graph& g);
-
-	iterator begin() {
-		return iterator(this, 0);
+	friend std::ostream& operator<<(std::ostream& os, Graph& g) {
+		for (auto i : g) {
+			os << "node at " << i.n_data << ", edges: ";
+			for (auto n : i.edges)
+				os << n << ", ";
+			os << std::endl;
+		}
+		return os;
 	}
 
-	iterator end() {
-		return iterator(this, _nodes.size());
+	Iterator begin() {
+		return Iterator(&_nodes[0]);
+	}
+
+	Iterator end() {
+		return Iterator(&_nodes[_nodes.size()]);
 	}
 	
+	/*
 	const_iterator cbegin() {
 		return const_iterator(this, 0);
 	}
@@ -314,6 +147,7 @@ public:
 	const_reverse_iterator crend() {
 		return const_reverse_iterator(this, _nodes.size());
 	}
+	*/
 
 	size_t size() {
 		return _nodes.size();
@@ -329,7 +163,7 @@ public:
 			edge.edges.emplace_back(edge(idx));
 			if (edge.layer < lowest_layer) lowest_layer = edge.layer;
 		}
-		node.layer = 1 + lowest neighbour layer;
+		node.layer = 1 + lowest_layer;
 		_nodes[idx] = node;
 	}
 
@@ -337,13 +171,3 @@ public:
 		insert(_nodes.size(), node);
 	}
 };
-
-std::ostream& Graph::operator<<(std::ostream& os, const Graph& g) {
-	for (auto i : g) {
-		os << "node at " << i->n_data << ", edges: ";
-		for (auto n : i->edges)
-			os << n << ", ";
-		os << std::endl;
-	}
-	return os;
-}

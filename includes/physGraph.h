@@ -17,6 +17,38 @@
  3) solve for tensile constraints (from edge lengths) to node velocities (transfer of momentum)
  	by adding the momentum of the nodes pushed on by tensile forces via edges.
  4) write new velocities, calculate and write new positions
+
+
+ velocities sum along edges:
+ 0 --- 1 --- 2
+ v2 = v2 + v1
+
+ tensile forces result from the velocity of a node taking it out of the constraint area/length/point
+	they perfectly cancel these movements, but the force is transferred on
+ if we do
+ 1) calculate point on radius from velocity + neighbour relative pos
+ 2) define translational difference = difference in length
+ 3) angular difference is discarded
+ 4) translational difference is inherited as momentum
+ we still need to find a way to compromise between contributions such that the function terminates
+
+ is it better with springy bonds?
+     e.g. node with v = (1., .5), pos = (0., 0.) 
+ bonded to one with v = (0., 0.), pos = (2., 2.)
+ would end up at (1., .5) after dt = 1
+ if the bond length is fixed at 4,
+ bond would push both nodes away from its centrepoint by 2.75
+ 
+ centrepoint of edge should constrain both nodes to edge length from centrepoint
+ but one node is fixed so the other gets double
+ and then the forces should redirect around the constraints of the other edges of the nodes
+
+ for layer:
+ 	for node:
+		for edge: 
+			if edge.other_end.layer == node.layer:
+				
+
  */
 
 typedef std::pair<size_t, size_t> Link;
