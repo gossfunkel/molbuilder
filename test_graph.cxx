@@ -90,7 +90,7 @@ int main() {
 
 		if(IsKeyReleased(KEY_P)) std::cout << g;
 		
-		g.fmap_edges_ord(&physics);
+		g.fmap_edges(&physics);
 		// observer follows pinned origin node
 		Vector2 global_vel = g.at(0)->n_data.vel;
 		g.fmap(+[](NodeData n_d, Vector2 global_vel){

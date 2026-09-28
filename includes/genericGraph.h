@@ -155,32 +155,12 @@ public:
 	void fmap_edges(std::pair<DataType, DataType> 
 			(*f)(std::pair<DataType, DataType>)) {
 		for (auto e : get_unique_edges()) {
-			std::pair<DataType, DataType> res = f(e);
+			std::pair<DataType, DataType> res = 
+				{at(e.first)->n_data, at(e.second)->n_data};
+			res = f(res);
 			at(e.first)->n_data  = res.first;
 			at(e.second)->n_data = res.second;
 		}
-	}
-
-	/*
-	 * Apply a function equally to each edge in the graph
-	 * (only applies once per edge). Strictly ordered by 
-	 * steps to origin (dijkstra method).
-	 */
-	void fmap_edges_ord(std::pair<DataType, DataType> 
-			(*f)(std::pair<DataType, DataType>)) {
-		auto eg = get_unique_edges(); // comes pre-sorted
-		for (size_t lyr = 0; lyr < _ndata.size(); ++lyr)
-			for (auto e : eg 
-				| std::views::filter([&](std::pair<size_t, size_t> edge){
-				return _layer_pos[edge.first] == lyr;
-					})) {
-				std::pair<DataType, DataType> res = 
-					{at(e.first)->n_data,
-					 at(e.second)->n_data};
-				res = f(res);
-				at(lyr,e.first)->n_data  = res.first;
-				at(lyr,e.second)->n_data = res.second;
-			}
 	}
 
 	void insert(Node<DataType> nd) {
