@@ -141,6 +141,13 @@ public:
 				nd.n_data = f(nd.n_data);
 	}
 
+	template <typename T>
+	void fmap(DataType (*f)(DataType x, T y), T y) {
+		for (auto lyr : _ndata) 
+			for (auto [id,nd] : lyr)
+				nd.n_data = f(nd.n_data, y);
+	}
+
 	/*
 	 * Apply a function equally to each edge in the graph
 	 * (only applies once per edge).
@@ -161,8 +168,7 @@ public:
 	 */
 	void fmap_edges_ord(std::pair<DataType, DataType> 
 			(*f)(std::pair<DataType, DataType>)) {
-		auto eg = get_unique_edges();
-		std::ranges::sort(eg);
+		auto eg = get_unique_edges(); // comes pre-sorted
 		for (size_t lyr = 0; lyr < _ndata.size(); ++lyr)
 			for (auto e : eg 
 				| std::views::filter([&](std::pair<size_t, size_t> edge){
