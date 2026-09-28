@@ -44,7 +44,7 @@ void add_node(Graph<NodeData> *g, size_t attach_id) {
 
 template <typename DataType>
 std::pair<DataType, DataType> 
-physics(std::pair<DataType, DataType> edge, double dt) {
+physics(std::pair<DataType, DataType> edge) {
 	if(edge.first.vel != edge.second.vel) {
 		// TODO balance between edges
 		// neighbour 2 could move a node after neighbour 1 constrained it
@@ -72,11 +72,9 @@ physics(std::pair<DataType, DataType> edge, double dt) {
 		edge.first.vel = Vector2Add(edge.first.vel, total_vel);
 		edge.second.vel = Vector2Add(edge.second.vel, total_vel);
 	}
-	edge.first.pos += Vector2Scale(edge.first.vel, dt);
-	edge.second.pos += Vector2Scale(edge.second.vel, dt);
-
 	return edge;
 }
+
 
 int main() {
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Graph tester");
@@ -96,13 +94,17 @@ int main() {
 		dt = GetFrameTime();
 		if(IsKeyReleased(KEY_P)) std::cout << g;
 		
-		g.fmap_edges(&physics, dt);
+		g.fmap_edges(&physics);
 		// observer follows pinned origin node
-		Vector2 global_vel = g.at(0)->n_data.vel * dt;
+		Vector2 global_vel = g.at(0)->n_data.vel;
 		g.fmap(+[](NodeData n_d, Vector2 global_vel){
 			n_d.pos -= global_vel;
 			return n_d;
 		}, global_vel);
+		g.fmap(+[](NodeData n_d, double dt) {
+			n_d.pos += Vector2Scale(n_d.vel, dt);
+			return n_d;
+		}, dt);
 			
 
 		BeginDrawing();
