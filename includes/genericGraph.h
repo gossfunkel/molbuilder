@@ -1,113 +1,165 @@
 #include <cstddef>
-#include <iterator>
 #include <vector>
 #include <unordered_map>
+#include <iterator>
 #include <iostream>
 
 template <typename DataType>
 struct Node {
 	DataType n_data;
 	size_t layer;
-	std::vector<Node<DataType>*> edges;
+	//std::vector<Node<DataType>*> edges;
+	std::vector<size_t> edges;
 };
 
-template <typename DataType>
-class NodeIterator {
-public:
-	NodeIterator(std::vector<Node<DataType>*> vec, size_t idx) {
-		_it = vec.at(idx);
-		_prev = (idx == 0) ? vec.at(vec.size() - 1) : vec.at(idx - 1);
-		_next = (idx == vec.size() - 1) ? vec.at(0) : vec.at(idx + 1);
-	}
-	~NodeIterator() {}
-
-	NodeIterator next() {
-		return _next;
-	}
-
-	NodeIterator prev() {
-		return _prev;
-	}
-
-protected:
-	std::vector<Node<DataType>*>::Iterator _it;
-	std::vector<Node<DataType>*>::Iterator _prev;
-	std::vector<Node<DataType>*>::Iterator _next;
-};
-
+/*
+ * Random-access graph with dijkstra steps encoded in node storage.
+ * Each node has a unique identifier for the use of hashmaps.
+ * Nodes are kept in buckets called 'layers', numbered according to
+ * 	the number of steps to node 0. 
+ * Which layer a node is stored in is saved in the _layer_pos field.
+ */
 template <typename DataType>
 class Graph {
-protected:
-	std::unordered_map<size_t, Node<DataType>> _nodes;
-public:
+	using Layer = std::unordered_map<size_t, Node<DataType>>;
+
 	struct Iterator {
 		using iterator_category = std::random_access_iterator_tag;
-		using difference_type = std::ptrdiff_t;
+		using difference_type = size_t;
 		using value_type = Node<DataType>;
-		using pointer = value_type*;
+		using pointer = size_t;
 		using reference = value_type&;
 
-		Iterator(pointer ptr) : _ptr(ptr){}
+		Iterator(Graph *g, pointer id) : _g(g), _id(id){}
 
 		reference operator*() const {
-			return *_ptr;
+			size_t layer = _g->_layer_pos[_id];
+			return _g->_ndata.at(layer)[_id];
 		}
 
 		pointer operator->() {
-			return _ptr;
+			return &(*_g->at(_id));
 		}
 
 		Iterator& operator++() {
-			++_ptr;
+			++_id;
 			return *this;
 		}
 
 		Iterator& operator--() {
-			--_ptr;
+			--_id;
 			return *this;
 		}
 
 		Iterator operator++(int) {
 			Iterator tmp = *this;
-			++(*this);
+			++_id;
 			return tmp;
 		}
 
 		Iterator operator--(int) {
 			Iterator tmp = *this;
-			--(*this);
+			--_id;
 			return tmp;
 		}
 
 		friend bool operator==(const Iterator& a, const Iterator& b) {
-			return a._ptr == b._ptr;
+			return a._id == b._id;
 		}
 
 		friend bool operator!=(const Iterator& a, const Iterator& b) {
-			return a._ptr != b._ptr;
+			return a._id != b._id;
 		}
+
 	protected:
-		pointer _ptr;
+		Graph *_g;
+		pointer _id;
 	};
+public:
 
-	Graph() {
-	};
+	Graph() = default;
+
 	Graph(Node<DataType> nd) {
-		_nodes[0] = nd;
-	}
-	Graph(Node<DataType>& nd) {
-		_nodes[0] = nd;
-	}
-	Graph(std::vector<Node<DataType>> nds) {
-		for (size_t idx = 0; idx < nds.size(); ++idx)
-			_nodes[idx] = nds.at(idx);
-	}
-	~Graph(){
+		_ndata.emplace_back(Layer(0, nd));
+		_layer_pos[0] = 0;
 	}
 
+	/*
+	Graph(std::vector<Node<Datatype>> v) {
+		Graph(v.at(0));
+		_layers.emplace_back(Layer());
+		for (auto nbr : _ndata.at(0)[0].edges) {
+			_layer_pos[nbr] = 1;
+			_ndata.at(1)[nbr] = v.at(nbr);
+		}
+		// TODO then recurse on neighbours
+	}
+	*/
+
+	Iterator begin() {
+		return {this, 0};
+	}
+
+	Iterator end() {
+		return {this, _layer_pos.size()};
+	}
+
+	Iterator cbegin() const {
+		return {this, 0};
+	}
+
+	Iterator cend() const {
+		return {this, _layer_pos.size()};
+	}
+
+	Iterator at(size_t node_id) {
+		if (_layer_pos.contains(node_id))
+			return {this, node_id};
+		else return this->end();
+	}
+
+	Iterator at(size_t layer, size_t node_id) {
+		if (_ndata.size() <= layer) return this->end();
+		if (_ndata.at(layer).contains(node_id))
+			return {this, node_id};
+		else return this->end();
+	}
+
+	void fmap(DataType (*f)(DataType x)) {
+		for (auto lyr : _ndata) 
+			for (auto [id,nd] : lyr)
+				nd.n_data = f(nd.n_data);
+	}
+
+	void insert(Node<DataType> nd) {
+		size_t new_id = _layer_pos.size();
+		nd.layer = 25565; // FIXME
+		Node<DataType> *nbr = nullptr;
+		for (auto eg : nd.edges) {
+			nbr = &_ndata.at(_layer_pos[eg])[eg];
+			nbr->edges.emplace_back(new_id);
+			if (nbr->layer < nd.layer) nd.layer = nbr->layer;
+		}
+		nd.layer++;
+		_layer_pos[new_id] = nd.layer;
+		if (_ndata.size() <= nd.layer) _ndata.emplace_back(Layer());
+		_ndata.at(nd.layer)[new_id] = nd;
+	}
+
+	void attach_to(Node<DataType> nd, size_t id) {
+		if (!_layer_pos.contains(id)) return;
+		size_t new_id = _layer_pos.size();
+		nd.layer = _layer_pos[id] + 1;
+		if(_ndata.size() <= nd.layer) _ndata.emplace_back(Layer());
+		_ndata.at(_layer_pos[id])[id].edges.emplace_back(id);
+		nd.edges.emplace_back(id);
+		_layer_pos[new_id] = nd.layer;
+		_ndata.at(nd.layer)[new_id] = nd;
+	}
+	
 	friend std::ostream& operator<<(std::ostream& os, Graph& g) {
 		for (auto i : g) {
-			os << "node at " << i.n_data << ", edges: ";
+			os << "node contains " << i.n_data << ", edges: ";
 			for (auto n : i.edges)
 				os << n << ", ";
 			os << std::endl;
@@ -115,59 +167,7 @@ public:
 		return os;
 	}
 
-	Iterator begin() {
-		return Iterator(&_nodes[0]);
-	}
-
-	Iterator end() {
-		return Iterator(&_nodes[_nodes.size()]);
-	}
-	
-	/*
-	const_iterator cbegin() {
-		return const_iterator(this, 0);
-	}
-
-	const_iterator cend() {
-		return const_iterator(this, _nodes.size());
-	}
-
-	reverse_iterator rbegin() {
-		return reverse_iterator(this, _nodes.size()-1);
-	}
-
-	reverse_iterator rend() {
-		return reverse_iterator(this, _nodes.size());
-	}
-	
-	const_reverse_iterator crbegin() {
-		return const_reverse_iterator(this, _nodes.size()-1);
-	}
-
-	const_reverse_iterator crend() {
-		return const_reverse_iterator(this, _nodes.size());
-	}
-	*/
-
-	size_t size() {
-		return _nodes.size();
-	}
-
-	DataType& at(size_t idx) {
-		return _nodes[idx];
-	}
-
-	void insert(size_t idx, Node<DataType> node) {
-		size_t lowest_layer = 25565; // FIXME
-		for (auto edge : node.edges) { 
-			edge.edges.emplace_back(edge(idx));
-			if (edge.layer < lowest_layer) lowest_layer = edge.layer;
-		}
-		node.layer = 1 + lowest_layer;
-		_nodes[idx] = node;
-	}
-
-	void emplace_back(Node<DataType> node) {
-		insert(_nodes.size(), node);
-	}
+	protected:
+		std::vector<Layer> _ndata;
+		std::unordered_map<size_t, size_t> _layer_pos;
 };
