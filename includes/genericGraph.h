@@ -2,6 +2,8 @@
 #include <vector>
 #include <unordered_map>
 #include <iterator>
+#include <algorithm>
+#include <ranges>
 #include <iostream>
 
 template <typename DataType>
@@ -37,7 +39,7 @@ class Graph {
 			return _g->_ndata.at(layer)[_id];
 		}
 
-		pointer operator->() {
+		Node<DataType>* operator->() {
 			return &(*_g->at(_id));
 		}
 
@@ -157,6 +159,19 @@ public:
 		nd.edges.emplace_back(id);
 		_layer_pos[new_id] = nd.layer;
 		_ndata.at(nd.layer)[new_id] = nd;
+	}
+
+	std::vector<std::pair<size_t, size_t>> get_unique_edges() {
+		std::vector<std::pair<size_t, size_t>> v;
+		for (auto [id, lyr] : _layer_pos)
+			for (auto e : _ndata.at(lyr)[id].edges)
+				v.emplace_back(
+					std::pair<size_t, size_t>(id, e)
+				);
+		std::ranges::sort(v);
+		const auto rm = std::ranges::unique(v);
+		v.erase(rm.begin(), rm.end());
+		return v;
 	}
 	
 	friend std::ostream& operator<<(std::ostream& os, Graph& g) {

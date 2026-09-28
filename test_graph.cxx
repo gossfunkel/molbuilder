@@ -1,23 +1,33 @@
-#include <iostream>
+#include "raylib.h"
+#include "genericGraph.h"
 
-#include "graph.h"
-
-/*
-#include "gridGraph.h"
-
-void test_grid_graph() {
-	Graph a = Graph{};
-	a.at(GRAPH_DIM/2).at(GRAPH_DIM/2) = 1;
-	a = attach_new_node(a, Coord{GRAPH_DIM/2,GRAPH_DIM/2});
-	std::cout << graph_to_string(a);
-}
-*/
+#define SCREEN_WIDTH 800
+#define SCREEN_HEIGHT 800
 
 int main() {
-	Graph a = Graph{0, Node{0, Vector2{GRAPH_DIM/2,GRAPH_DIM/2}, std::std::vector<size_t>{}}};
-	a = attach_new_node(a, 0);
-	a = attach_new_node(a, 0);
-	a = attach_new_node(a, 1);
-	std::cout << graph_to_string(a);
+	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Graph tester");
+
+	Graph<Vector2> g = {Node<Vector2>{
+		Vector2{-10.f, 0.f}, 0, std::vector<size_t>()
+	}};
+	g.attach_to(Node<Vector2>{
+		Vector2{10.f, 0.f}, 1, std::vector<size_t>()
+	}, 0);
+
+	while(!WindowShouldClose()) {
+		BeginDrawing();
+		ClearBackground(BLACK);
+		g.fmap(+[](Vector2 pos){
+			DrawCircleV(pos, 5.f, SKYBLUE); return pos;
+		});
+		for (auto [start, end] : g.get_unique_edges())
+			DrawLineV(
+				g.at(start)->n_data,
+				g.at(end)->n_data,
+				WHITE
+			);
+		EndDrawing();
+	}
+	CloseWindow();
 	return 0;
 }
