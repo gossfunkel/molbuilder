@@ -20,8 +20,7 @@ int main() {
 	*/
 	//nds.at(0).edges.at(0) = &nds.at(1);
 	//nds.at(1).edges.at(0) = &nds.at(0);
-	Graph<float> g = {};
-	g.insert(Node<float>(-10.f, 0, std::vector<size_t>()));
+	Graph<float> g = {Node<float>(-10.f, 0, std::vector<size_t>())};
 	g.attach_to(Node<float>(10.f, 1, std::vector<size_t>()), 0);
 	std::cout << g;
 	return 0;

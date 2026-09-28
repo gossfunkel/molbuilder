@@ -80,7 +80,9 @@ public:
 	Graph() = default;
 
 	Graph(Node<DataType> nd) {
-		_ndata.emplace_back(Layer(0, nd));
+		nd.layer = 0;
+		_ndata.emplace_back(Layer());
+		_ndata.at(0)[0] = nd;
 		_layer_pos[0] = 0;
 	}
 
@@ -151,7 +153,7 @@ public:
 		size_t new_id = _layer_pos.size();
 		nd.layer = _layer_pos[id] + 1;
 		if(_ndata.size() <= nd.layer) _ndata.emplace_back(Layer());
-		_ndata.at(_layer_pos[id])[id].edges.emplace_back(id);
+		_ndata.at(_layer_pos[id])[id].edges.emplace_back(new_id);
 		nd.edges.emplace_back(id);
 		_layer_pos[new_id] = nd.layer;
 		_ndata.at(nd.layer)[new_id] = nd;
@@ -159,7 +161,8 @@ public:
 	
 	friend std::ostream& operator<<(std::ostream& os, Graph& g) {
 		for (auto i : g) {
-			os << "node contains " << i.n_data << ", edges: ";
+			os << "layer " << i.layer << ": "
+			   << "node contains " << i.n_data << ", edges: ";
 			for (auto n : i.edges)
 				os << n << ", ";
 			os << std::endl;
