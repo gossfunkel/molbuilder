@@ -33,26 +33,26 @@ void add_node(Graph<NodeData> *g, size_t attach_id) {
 	g->attach_to(new_node, attach_id);
 }
 
+template <typename DataType>
+std::pair<DataType, DataType> 
+physics(std::pair<DataType, DataType> edge) {
+	return edge;
+}
+
 int main() {
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Graph tester");
 
 	Graph<NodeData> g = {
-		ND{
-			NodeData{
-				Vector2{
-					(SCREEN_WIDTH/2.f), 
-					SCREEN_HEIGHT/2.f
-				}, 
-			5.f,
-			GREEN
-			},
-		0, 
-		std::vector<size_t>()
-		}
+		ND{NodeData{Vector2{(SCREEN_WIDTH/2.f), 
+				     SCREEN_HEIGHT/2.f}, 
+			5.f, GREEN},
+		0, std::vector<size_t>()}
 	};
 	add_node(&g, 0);
 
 	while(!WindowShouldClose()) {
+		g.fmap_edges_ord(&physics);
+
 		BeginDrawing();
 		ClearBackground(BLACK);
 		g.fmap(+[](NodeData n_d){
