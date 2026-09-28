@@ -45,28 +45,33 @@ void add_node(Graph<NodeData> *g, size_t attach_id) {
 template <typename DataType>
 std::pair<DataType, DataType> 
 physics(std::pair<DataType, DataType> edge, double dt) {
-	/*
 	if(edge.first.vel != edge.second.vel) {
 		// TODO balance between edges
 		// neighbour 2 could move a node after neighbour 1 constrained it
 		// find parallel and orthogonal components
 		// 	of velocities
-		Vector2 edge_hat = Vector2Normalize(Vector2Subtract(
-			edge.second.pos, edge.first.pos));
+		Vector2 e = Vector2Subtract(
+			edge.second.pos, edge.first.pos);
+		Vector2 edge_hat = Vector2Normalize(e);
 		Vector2 e1v_p = Vector2Scale(edge_hat, 
-				Vector2Dot(edge.first.vel, edge_hat));
+			Vector2DotProduct(edge.first.vel, edge_hat));
 		Vector2 e2v_p = Vector2Scale(edge_hat, 
-				Vector2Dot(edge.second.vel, edge_hat));
+			Vector2DotProduct(edge.second.vel, edge_hat));
 		Vector2 e1v_o = Vector2Subtract(edge.first.vel, e1v_p);
 		Vector2 e2v_o = Vector2Subtract(edge.second.vel, e2v_p);
 		// average parallel components
 		Vector2 total_vel = Vector2Scale(
 					Vector2Add(e1v_p, e2v_p), .5f);
 		// project orthogonal to curve
-
+		edge.first.vel = Vector2Subtract(Vector2Add(
+			Vector2Rotate(e, 180 + Vector2Length(e1v_o)), 
+				edge.second.pos), edge.first.pos);
+		edge.second.vel = Vector2Subtract(Vector2Add(
+			Vector2Rotate(e, Vector2Length(e2v_o)), 
+				edge.first.pos), edge.second.pos);
+		edge.first.vel = Vector2Add(edge.first.vel, total_vel);
+		edge.second.vel = Vector2Add(edge.second.vel, total_vel);
 	}
-	*/
-	// TODO capture dt
 	edge.first.pos += Vector2Scale(edge.first.vel, dt);
 	edge.second.pos += Vector2Scale(edge.second.vel, dt);
 
@@ -93,7 +98,7 @@ int main() {
 		
 		g.fmap_edges(&physics, dt);
 		// observer follows pinned origin node
-		Vector2 global_vel = g.at(0)->n_data.vel;
+		Vector2 global_vel = g.at(0)->n_data.vel * dt;
 		g.fmap(+[](NodeData n_d, Vector2 global_vel){
 			n_d.pos -= global_vel;
 			return n_d;
