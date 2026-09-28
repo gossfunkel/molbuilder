@@ -8,10 +8,14 @@ int main() {
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Graph tester");
 
 	Graph<Vector2> g = {Node<Vector2>{
-		Vector2{-10.f, 0.f}, 0, std::vector<size_t>()
+		Vector2{(SCREEN_WIDTH/2.f)-10.f, SCREEN_HEIGHT/2.f}, 
+		0, 
+		std::vector<size_t>()
 	}};
 	g.attach_to(Node<Vector2>{
-		Vector2{10.f, 0.f}, 1, std::vector<size_t>()
+		Vector2{(SCREEN_WIDTH/2.f)+10.f, SCREEN_HEIGHT/2.f}, 
+		1, 
+		std::vector<size_t>()
 	}, 0);
 
 	while(!WindowShouldClose()) {

@@ -1,5 +1,5 @@
 CFLAGS := -O3 -Wall -Iincludes -Llib -lraylib
-CPPFLAGS := -std=c++23 -O3 -Wall -Iincludes -Llib -lraylib -lm -lglfw
+CPPFLAGS := -std=c++23 -O3 -Wall -Iincludes -Llib -lraylib -lm -lglfw -lX11
 
 ifeq ($(OS),Windows_NT)
 	CFLAGS += -lwinmm -lgdi32
