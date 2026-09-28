@@ -44,7 +44,7 @@ void add_node(Graph<NodeData> *g, size_t attach_id) {
 
 template <typename DataType>
 std::pair<DataType, DataType> 
-physics(std::pair<DataType, DataType> edge) {
+physics(std::pair<DataType, DataType> edge, double dt) {
 	/*
 	if(edge.first.vel != edge.second.vel) {
 		// TODO balance between edges
@@ -67,8 +67,8 @@ physics(std::pair<DataType, DataType> edge) {
 	}
 	*/
 	// TODO capture dt
-	edge.first.pos += edge.first.vel;
-	edge.second.pos += edge.second.vel;
+	edge.first.pos += Vector2Scale(edge.first.vel, dt);
+	edge.second.pos += Vector2Scale(edge.second.vel, dt);
 
 	return edge;
 }
@@ -86,11 +86,12 @@ int main() {
 	add_node(&g, 0);
 	g.at(1)->n_data.vel = Vector2{1.f,0.f};
 
+	double dt;
 	while(!WindowShouldClose()) {
-
+		dt = GetFrameTime();
 		if(IsKeyReleased(KEY_P)) std::cout << g;
 		
-		g.fmap_edges(&physics);
+		g.fmap_edges(&physics, dt);
 		// observer follows pinned origin node
 		Vector2 global_vel = g.at(0)->n_data.vel;
 		g.fmap(+[](NodeData n_d, Vector2 global_vel){

@@ -163,6 +163,18 @@ public:
 		}
 	}
 
+	template <typename T>
+	void fmap_edges(std::pair<DataType, DataType> 
+		(*f)(std::pair<DataType, DataType> xs, T x), T x) {
+		for (auto e : get_unique_edges()) {
+			std::pair<DataType, DataType> res = 
+				{at(e.first)->n_data, at(e.second)->n_data};
+			res = f(res, x);
+			at(e.first)->n_data  = res.first;
+			at(e.second)->n_data = res.second;
+		}
+	}
+
 	void insert(Node<DataType> nd) {
 		size_t new_id = _layer_pos.size();
 		nd.layer = 25565; // FIXME
