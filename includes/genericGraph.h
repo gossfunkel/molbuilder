@@ -81,6 +81,9 @@ public:
 
 	Graph() = default;
 
+	/*
+	 * Recommended: construct a graph with origin node defined.
+	 */
 	Graph(Node<DataType> nd) {
 		nd.layer = 0;
 		_ndata.emplace_back(Layer());
@@ -129,10 +132,27 @@ public:
 		else return this->end();
 	}
 
+	/*
+	 * Apply a function equally to each member of the graph
+	 */
 	void fmap(DataType (*f)(DataType x)) {
 		for (auto lyr : _ndata) 
 			for (auto [id,nd] : lyr)
 				nd.n_data = f(nd.n_data);
+	}
+
+	/*
+	 * Apply a function equally to each edge in the graph
+	 * (only applies once per edge).
+	 */
+	void fmap_edges(std::pair<DataType, DataType> 
+			(*f)(std::pair<DataType, DataType>)) {
+		for (auto [x,y] : get_unique_edges()) {
+			std::pair<DataType, DataType> res =
+				f(x,y);
+			at(x)->n_data = res.first;
+			at(y)->n_data = res.second;
+		}
 	}
 
 	void insert(Node<DataType> nd) {
@@ -161,6 +181,10 @@ public:
 		_ndata.at(nd.layer)[new_id] = nd;
 	}
 
+	/*
+	 * Obtain a vector of pairs of IDs for each edge-
+	 * removes duplicates from edge symmetry.
+	 */
 	std::vector<std::pair<size_t, size_t>> get_unique_edges() {
 		std::vector<std::pair<size_t, size_t>> v;
 		for (auto [id, lyr] : _layer_pos)
@@ -174,6 +198,9 @@ public:
 		return v;
 	}
 	
+	/*
+	 * Print a debug/log description of the graph to a stream.
+	 */
 	friend std::ostream& operator<<(std::ostream& os, Graph& g) {
 		for (auto i : g) {
 			os << "layer " << i.layer << ": "
@@ -186,6 +213,7 @@ public:
 	}
 
 	protected:
-		std::vector<Layer> _ndata;
+		std::vector<Layer> _ndata; // raw data
+		// lookup table for layer bucket / dijsktra value:
 		std::unordered_map<size_t, size_t> _layer_pos;
 };
