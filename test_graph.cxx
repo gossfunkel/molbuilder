@@ -25,6 +25,19 @@ struct NodeData {
 
 using ND = Node<NodeData>;
 
+// project a vector onto the line on which the other vector lies
+#define project_onto(vx, vy) Vector2Scale(Vector2Normalize(vy), \
+		 Vector2DotProduct((vx), Vector2Normalize(vy)))
+
+// get the rejection vector 
+// (component of vector on basis orthogonal to projection)
+#define rejection_of(vx, vy) Vector2Subtract(vx, project_onto(vx, vy))
+
+// constrain a movement of pos x by vx to its distance to pos y
+#define constrain_to(vx, x, y) Vector2Subtract(Vector2Add( 	\
+		Vector2Rotate(Vector2Subtract(x, y), 		\
+		Vector2Length(vx)), x), y)
+
 void add_node(Graph<NodeData> *g, size_t attach_id) {
 	ND *attach_nd = &(*g->at(attach_id));
 	Vector2 attached_pos = attach_nd->n_data.pos;
@@ -52,27 +65,36 @@ void add_node(Graph<NodeData> *g, size_t attach_id) {
 	g->attach_to(new_node, attach_id);
 }
 
-template <typename DataType>
-std::pair<DataType, DataType>
-repel(std::pair<DataType, DataType> nd_pair) {
+std::pair<NodeData, NodeData>
+repel(std::pair<NodeData, NodeData> nd_pair) {
 	Vector2 dist = Vector2Subtract(nd_pair.first.pos,
 			nd_pair.second.pos);
 	float f_mag = 2.f/Vector2Length(dist);
-	nd_pair.first.force += Vector2Scale(Vector2Normalize(dist),
-						-f_mag);
+	/*std::cout << "repelling nodes at " 
+		  << nd_pair.first.force.x << ", "
+		  << nd_pair.first.force.y << " and "
+		  << nd_pair.second.force.x << ", "
+		  << nd_pair.second.force.y << ".\n";
+	*/
+	nd_pair.first.force  -= Vector2Scale(Vector2Normalize(dist),
+						f_mag);
 	nd_pair.second.force += Vector2Scale(Vector2Normalize(dist),
-						 f_mag);
+						f_mag);
 	return nd_pair;
 }
 
-template <typename DataType>
-std::pair<DataType, DataType> 
-constrain_nodes(std::pair<DataType, DataType> edge, double dt) {
+std::pair<NodeData, NodeData> 
+constrain_nodes(std::pair<NodeData, NodeData> edge, double dt) {
 	if(edge.first.vel != edge.second.vel) {
-		// TODO balance between edges
+		// TODO balance between edges:
+		// 	neighbour 2 could move a node after 
+		// 		neighbour 1 constrained it
 		// 	forces on an edge
 		// 	fixed origin matches any applied force
-		// neighbour 2 could move a node after neighbour 1 constrained it
+		// 	edges cannot resize so nodes must have 
+		// 		equal vel along edge (parallel)
+		// 	if layers unequal, parallel forces go to
+		// 		higher layer 
 		edge.first.vel += Vector2Scale(edge.first.force, dt);
 		edge.second.vel += Vector2Scale(edge.second.force, dt);
 		// find parallel and orthogonal components of vels
@@ -88,6 +110,7 @@ constrain_nodes(std::pair<DataType, DataType> edge, double dt) {
 		// sum parallel components
 		Vector2 total_vel = Vector2Add(e1v_p, e2v_p);
 		// project orthogonal to curve
+		// TODO curve around barycentre/edge?
 		edge.first.vel = Vector2Subtract(Vector2Add(
 			Vector2Rotate(e, 180 + Vector2Length(e1v_o)), 
 				edge.second.pos), edge.first.pos);
@@ -117,6 +140,8 @@ int main() {
 	add_node(&g, 1);
 	g.at(1)->n_data.vel = Vector2{10.f,0.f};
 
+	//std::cout << "Initialised graph:\n" << g;
+
 	double dt;
 	while(!WindowShouldClose()) {
 		dt = GetFrameTime();
@@ -130,11 +155,11 @@ int main() {
 			n_d.pos -= global_vel;
 			return n_d;
 		}, global_vel);
+		// move nodes
 		g.fmap(+[](NodeData n_d, double dt) {
 			n_d.pos += Vector2Scale(n_d.vel, dt);
 			return n_d;
 		}, dt);
-			
 
 		BeginDrawing();
 		ClearBackground(BLACK);
