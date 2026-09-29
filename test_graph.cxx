@@ -31,13 +31,14 @@ void add_node(Graph<NodeData> *g, size_t attach_id) {
 	Vector2 new_pos = attached_pos;
 	if (attach_nd->edges.size() > 0) {
 		// find 'node north' (vector along first edge)
-		Vector2 nnorth = Vector2Subtract(attached_pos, 
-			g->at(attach_nd->edges.at(0))->n_data.pos);
+		Vector2 nnorth = Vector2Subtract( 
+			g->at(attach_nd->edges.at(0))->n_data.pos,
+			attached_pos);
 		// rotate north edge around attach_node by TAU*n/n+1
-		int n_edges = attach_nd->edges.size();
-		if (attach_id == 0) n_edges -= 1;
+		float n_edges = attach_nd->edges.size();
+		//if (attach_id == 0) n_edges -= 1;
 		new_pos = Vector2Add(Vector2Rotate(nnorth, TAU * 
-				n_edges / (n_edges + 1)),
+				n_edges / (n_edges + 1.f)),
 				attached_pos);
 	} else new_pos = Vector2Add(attached_pos, EDGE_VEC);
 	ND new_node = ND{NodeData{
@@ -47,7 +48,7 @@ void add_node(Graph<NodeData> *g, size_t attach_id) {
 		5.f, 
 		SKYBLUE},
 		attach_nd->layer + 1,
-		std::vector<size_t>{attach_id}};
+		std::vector<size_t>{}};
 	g->attach_to(new_node, attach_id);
 }
 
