@@ -153,7 +153,7 @@ public:
 	 * (only applies once per edge).
 	 */
 	void fmap_edges(std::pair<DataType, DataType> 
-			(*f)(std::pair<DataType, DataType>)) {
+			(*f)(std::pair<DataType, DataType> xs)) {
 		for (auto e : get_unique_edges()) {
 			std::pair<DataType, DataType> res = 
 				{at(e.first)->n_data, at(e.second)->n_data};
@@ -173,6 +173,19 @@ public:
 			at(e.first)->n_data  = res.first;
 			at(e.second)->n_data = res.second;
 		}
+	}
+
+	void cartesian_map(std::pair<DataType, DataType>
+		(*f)(std::pair<DataType, DataType> xs)) {
+		for (auto i = begin(); i != end(); ++i) 
+			for (auto j = begin(); j != end(); ++j)
+				if (i != j) {
+					std::pair<DataType, DataType> res = 
+					{i->n_data, j->n_data};
+					res = f(res);
+					i->n_data = res.first;
+					j->n_data = res.second;
+			}
 	}
 
 	void insert(Node<DataType> nd) {

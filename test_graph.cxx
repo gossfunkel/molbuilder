@@ -11,6 +11,7 @@
 struct NodeData {
 	Vector2 pos;
 	Vector2 vel;
+	Vector2 force;
 	float size;
 	Color col;
 
@@ -33,23 +34,44 @@ void add_node(Graph<NodeData> *g, size_t attach_id) {
 	Vector2 nnorth = Vector2Subtract(attached_pos, 
 		g->at(attach_nd->edges.at(0))->n_data.pos);
 	// rotate north edge around attach_node by TAU*n/n+1
-	new_pos = Vector2Rotate(nnorth, TAU * 
-			attach_nd->edges.size() /
-			attach_nd->edges.size() + 1);
+	new_pos = Vector2Add(Vector2Rotate(nnorth, TAU * 
+			(attach_nd->edges.size() - 1) /
+			attach_nd->edges.size()),
+			attached_pos);
 	} else new_pos = Vector2Add(attached_pos, EDGE_VEC);
 	ND new_node = ND{NodeData{
-		new_pos, attach_nd->n_data.vel, 5.f, SKYBLUE}};
+		new_pos, 
+		attach_nd->n_data.vel, 
+		Vector2Zero(), 
+		5.f, 
+		SKYBLUE}};
 	g->attach_to(new_node, attach_id);
 }
 
 template <typename DataType>
+std::pair<DataType, DataType>
+repel(std::pair<DataType, DataType> nd_pair) {
+	Vector2 dist = Vector2Subtract(nd_pair.first.pos,
+			nd_pair.second.pos);
+	float f_mag = 2.f/Vector2Length(dist);
+	nd_pair.first.force += Vector2Scale(Vector2Normalize(dist),
+						-f_mag);
+	nd_pair.second.force += Vector2Scale(Vector2Normalize(dist),
+						 f_mag);
+	return nd_pair;
+}
+
+template <typename DataType>
 std::pair<DataType, DataType> 
-physics(std::pair<DataType, DataType> edge) {
+constrain_nodes(std::pair<DataType, DataType> edge, double dt) {
 	if(edge.first.vel != edge.second.vel) {
 		// TODO balance between edges
+		// 	forces on an edge
+		// 	fixed origin matches any applied force
 		// neighbour 2 could move a node after neighbour 1 constrained it
-		// find parallel and orthogonal components
-		// 	of velocities
+		edge.first.vel += Vector2Scale(edge.first.force, dt);
+		edge.second.vel += Vector2Scale(edge.second.force, dt);
+		// find parallel and orthogonal components of vels
 		Vector2 e = Vector2Subtract(
 			edge.second.pos, edge.first.pos);
 		Vector2 edge_hat = Vector2Normalize(e);
@@ -59,9 +81,8 @@ physics(std::pair<DataType, DataType> edge) {
 			Vector2DotProduct(edge.second.vel, edge_hat));
 		Vector2 e1v_o = Vector2Subtract(edge.first.vel, e1v_p);
 		Vector2 e2v_o = Vector2Subtract(edge.second.vel, e2v_p);
-		// average parallel components
-		Vector2 total_vel = Vector2Scale(
-					Vector2Add(e1v_p, e2v_p), .5f);
+		// sum parallel components
+		Vector2 total_vel = Vector2Add(e1v_p, e2v_p);
 		// project orthogonal to curve
 		edge.first.vel = Vector2Subtract(Vector2Add(
 			Vector2Rotate(e, 180 + Vector2Length(e1v_o)), 
@@ -82,19 +103,22 @@ int main() {
 	Graph<NodeData> g = {
 		ND{NodeData{Vector2{(SCREEN_WIDTH/2.f), 
 				     SCREEN_HEIGHT/2.f}, 
-			Vector2Zero(),
+			Vector2Zero(), Vector2Zero(),
 			5.f, GREEN},
 		0, std::vector<size_t>()}
 	};
 	add_node(&g, 0);
-	g.at(1)->n_data.vel = Vector2{1.f,0.f};
+	add_node(&g, 0);
+	add_node(&g, 1);
+	g.at(1)->n_data.vel = Vector2{10.f,0.f};
 
 	double dt;
 	while(!WindowShouldClose()) {
 		dt = GetFrameTime();
 		if(IsKeyReleased(KEY_P)) std::cout << g;
 		
-		g.fmap_edges(&physics);
+		g.cartesian_map(&repel);
+		g.fmap_edges(&constrain_nodes, dt);
 		// observer follows pinned origin node
 		Vector2 global_vel = g.at(0)->n_data.vel;
 		g.fmap(+[](NodeData n_d, Vector2 global_vel){
