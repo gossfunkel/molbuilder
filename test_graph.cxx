@@ -37,6 +37,15 @@ using ND = Node<NodeData>;
 #define constrain_to(vx, x, y) Vector2Subtract(Vector2Add( 	\
 		Vector2Rotate(Vector2Subtract(x, y), 		\
 		Vector2Length(vx)), x), y)
+/*
+ * constrain :: constraints -> (nodes -> nodes)
+ * f(xs, ys, vxs, vys, dt)
+ * position and velocities of all nodes is a function of all node 
+ * 	positions and velocities, given for a set of constraints
+ * so physics function must be constructed by constraint function,
+ * 	or take some state that defines its parameters
+ * 	i.e. f(xs, ys, vxs, vys, dt, constraints)
+ */
 
 void add_node(Graph<NodeData> *g, size_t attach_id) {
 	ND *attach_nd = &(*g->at(attach_id));
@@ -147,15 +156,19 @@ int main() {
 		dt = GetFrameTime();
 		if(IsKeyReleased(KEY_P)) std::cout << g;
 		
+		// 1) each node repels all others + reverse
 		g.cartesian_map(&repel);
+		// 2) find node pressure on edges
+		g.fmap(&press_edges);
+		// 3) put combined forces on edges back onto nodes
 		g.fmap_edges(&constrain_nodes, dt);
-		// observer follows pinned origin node
+		// 4) observer follows pinned origin node
 		Vector2 global_vel = g.at(0)->n_data.vel;
 		g.fmap(+[](NodeData n_d, Vector2 global_vel){
 			n_d.pos -= global_vel;
 			return n_d;
 		}, global_vel);
-		// move nodes
+		// 5) move nodes by final vel
 		g.fmap(+[](NodeData n_d, double dt) {
 			n_d.pos += Vector2Scale(n_d.vel, dt);
 			return n_d;
