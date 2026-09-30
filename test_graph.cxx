@@ -76,8 +76,8 @@ void add_node(Graph<NodeData> *g, size_t attach_id) {
 
 std::pair<NodeData, NodeData>
 repel(std::pair<NodeData, NodeData> nd_pair) {
-	Vector2 dist = Vector2Subtract(nd_pair.first.pos,
-			nd_pair.second.pos);
+	Vector2 dist = Vector2Subtract(nd_pair.second.pos,
+			nd_pair.first.pos);
 	float f_mag = 2.f/Vector2Length(dist);
 	/*std::cout << "repelling nodes at " 
 		  << nd_pair.first.force.x << ", "
@@ -85,25 +85,49 @@ repel(std::pair<NodeData, NodeData> nd_pair) {
 		  << nd_pair.second.force.x << ", "
 		  << nd_pair.second.force.y << ".\n";
 	*/
-	nd_pair.first.force  -= Vector2Scale(Vector2Normalize(dist),
+	nd_pair.first.force += Vector2Scale(Vector2Normalize(dist),
 						f_mag);
-	nd_pair.second.force += Vector2Scale(Vector2Normalize(dist),
-						f_mag);
+	//nd_pair.second.force += Vector2Scale(Vector2Normalize(dist),
+	//					f_mag);
 	return nd_pair;
 }
 
+/* opposing forces move through an edge
+ * edges cannot resize so nodes must have equal vel along edge (parallel)
+ * fixed origin matches any applied force
+ */
+std::pair<NodeData, NodeData> 
+press_edges(std::pair<NodeData, NodeData> edge) {
+	Vector2 edge_vec = Vector2Subtract(
+			edge.second.pos, edge.first.pos);
+	Vector2 e1f_p = project_onto(edge.first.force, edge_vec);
+	Vector2 e1f_o = Vector2Subtract(edge.first.force, e1f_p);
+	Vector2 e2f_p = project_onto(edge.second.force, edge_vec);
+	Vector2 e2f_o = Vector2Subtract(edge.second.force, e2f_p);
+	Vector2 f_edge = Vector2Add(e1f_p, e2f_p);
+	edge.first.force = Vector2Add(f_edge, e1f_o);
+	edge.second.force = Vector2Add(f_edge, e2f_o);
+
+	// TODO curve around barycentre/edge hinge pt?
+	// 	or constrain to circle once from lower layer?
+	/*
+	edge.first.vel = Vector2Subtract(Vector2Add(
+		Vector2Rotate(e, 180 + Vector2Length(e1v_o)), 
+			edge.second.pos), edge.first.pos);
+	edge.second.vel = Vector2Subtract(Vector2Add(
+		Vector2Rotate(e, Vector2Length(e2v_o)), 
+			edge.first.pos), edge.second.pos);
+	edge.first.vel = Vector2Add(edge.first.vel, total_vel);
+	edge.second.vel = Vector2Add(edge.second.vel, total_vel);
+	*/
+
+	return edge;
+}
+
+/*
 std::pair<NodeData, NodeData> 
 constrain_nodes(std::pair<NodeData, NodeData> edge, double dt) {
 	if(edge.first.vel != edge.second.vel) {
-		// TODO balance between edges:
-		// 	neighbour 2 could move a node after 
-		// 		neighbour 1 constrained it
-		// 	forces on an edge
-		// 	fixed origin matches any applied force
-		// 	edges cannot resize so nodes must have 
-		// 		equal vel along edge (parallel)
-		// 	if layers unequal, parallel forces go to
-		// 		higher layer 
 		edge.first.vel += Vector2Scale(edge.first.force, dt);
 		edge.second.vel += Vector2Scale(edge.second.force, dt);
 		// find parallel and orthogonal components of vels
@@ -119,19 +143,10 @@ constrain_nodes(std::pair<NodeData, NodeData> edge, double dt) {
 		// sum parallel components
 		Vector2 total_vel = Vector2Add(e1v_p, e2v_p);
 		// project orthogonal to curve
-		// TODO curve around barycentre/edge?
-		edge.first.vel = Vector2Subtract(Vector2Add(
-			Vector2Rotate(e, 180 + Vector2Length(e1v_o)), 
-				edge.second.pos), edge.first.pos);
-		edge.second.vel = Vector2Subtract(Vector2Add(
-			Vector2Rotate(e, Vector2Length(e2v_o)), 
-				edge.first.pos), edge.second.pos);
-		edge.first.vel = Vector2Add(edge.first.vel, total_vel);
-		edge.second.vel = Vector2Add(edge.second.vel, total_vel);
 	}
 	return edge;
 }
-
+*/
 
 int main() {
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Graph tester");
@@ -156,19 +171,17 @@ int main() {
 		dt = GetFrameTime();
 		if(IsKeyReleased(KEY_P)) std::cout << g;
 		
-		// 1) each node repels all others + reverse
+		// 1) each node repelled by all others
 		g.cartesian_map(&repel);
-		// 2) find node pressure on edges
-		g.fmap(&press_edges);
-		// 3) put combined forces on edges back onto nodes
-		g.fmap_edges(&constrain_nodes, dt);
-		// 4) observer follows pinned origin node
+		// 2) calculate tension on edges 
+		g.fmap_nbrs(&press_edges);
+		// 3) observer follows pinned origin node
 		Vector2 global_vel = g.at(0)->n_data.vel;
 		g.fmap(+[](NodeData n_d, Vector2 global_vel){
 			n_d.pos -= global_vel;
 			return n_d;
 		}, global_vel);
-		// 5) move nodes by final vel
+		// 4) move nodes by final vel
 		g.fmap(+[](NodeData n_d, double dt) {
 			n_d.pos += Vector2Scale(n_d.vel, dt);
 			return n_d;
