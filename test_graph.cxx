@@ -74,11 +74,15 @@ void add_node(Graph<NodeData> *g, size_t attach_id) {
 	g->attach_to(new_node, attach_id);
 }
 
+/*
+ * All nodes are pressed away from all other nodes
+ */
 std::pair<NodeData, NodeData>
 repel(std::pair<NodeData, NodeData> nd_pair) {
 	Vector2 dist = Vector2Subtract(nd_pair.second.pos,
 			nd_pair.first.pos);
-	float f_mag = 2.f/Vector2Length(dist);
+	// inverse square repulsion
+	float f_mag = 2.f/(Vector2Length(dist) * Vector2Length(dist));
 	/*std::cout << "repelling nodes at " 
 		  << nd_pair.first.force.x << ", "
 		  << nd_pair.first.force.y << " and "
@@ -181,8 +185,9 @@ int main() {
 			n_d.pos -= global_vel;
 			return n_d;
 		}, global_vel);
-		// 4) move nodes by final vel
+		// 4) move nodes
 		g.fmap(+[](NodeData n_d, double dt) {
+		    n_d.vel += Vector2Scale(n_d.force, dt);
 			n_d.pos += Vector2Scale(n_d.vel, dt);
 			return n_d;
 		}, dt);

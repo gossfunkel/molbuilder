@@ -121,8 +121,7 @@ public:
 	}
 
 	Iterator at (size_t node_id) {
-		if (_layer_pos.contains(node_id))
-			return {this, node_id};
+		if (_layer_pos.contains(node_id)) return {this, node_id};
 		else return this->end();
 	}
 
@@ -155,27 +154,29 @@ public:
 	 */
 	void fmap_nbrs (std::pair<DataType, DataType>
 			(*f)(std::pair<DataType, DataType> xs)) {
-		for (auto lyr : _ndata) for (auto [id,nd] : lyr) 
-			for (auto nbr : nd.edges) {
-				std::pair<DataType, DataType> res 
-					= {nd.n_data, at(nbr)->n_data};
-				res = f(res);
-				nd.n_data 	= res.first;
-				at(nbr)->n_data = res.second;
-			}
+		for (auto lyr : _ndata) 
+				for (auto [id,nd] : lyr) 
+					for (auto nbr : nd.edges) {
+						std::pair<DataType, DataType> res 
+							= {nd.n_data, at(nbr)->n_data};
+						res = f(res);
+						nd.n_data 		= res.first;
+						at(nbr)->n_data = res.second;
+					}
 	}
 
 	template <typename T>
 	void fmap_nbrs (std::pair<DataType, DataType>
 			(*f)(std::pair<DataType, DataType> xs, T y), T y) {
-		for (auto lyr : _ndata) for (auto [id,nd] : lyr) 
-			for (auto nbr : nd.edges) {
-				std::pair<DataType, DataType> res 
-					= {nd.n_data, at(nbr)->n_data};
-				res = f(res, y);
-				nd.n_data 	= res.first;
-				at(nbr)->n_data = res.second;
-			}
+		for (auto lyr : _ndata) 
+				for (auto [id,nd] : lyr) 
+					for (auto nbr : nd.edges) {
+						std::pair<DataType, DataType> res 
+							= {nd.n_data, at(nbr)->n_data};
+						res = f(res, y);
+						nd.n_data 	= res.first;
+						at(nbr)->n_data = res.second;
+					}
 	}
 
 	/*
