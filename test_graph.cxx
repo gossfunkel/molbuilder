@@ -180,6 +180,10 @@ int main() {
 		// 2) calculate tension on edges 
 		g.fmap_nbrs(&press_edges);
 		// 3) observer follows pinned origin node
+		g.fmap(+[](NodeData n_d, double dt) {
+		    n_d.vel += Vector2Scale(n_d.force, dt);
+			return n_d;
+		}, dt);
 		Vector2 global_vel = g.at(0)->n_data.vel;
 		g.fmap(+[](NodeData n_d, Vector2 global_vel){
 			n_d.vel -= global_vel;
@@ -187,7 +191,6 @@ int main() {
 		}, global_vel);
 		// 4) move nodes
 		g.fmap(+[](NodeData n_d, double dt) {
-		    n_d.vel += Vector2Scale(n_d.force, dt);
 			n_d.pos += Vector2Scale(n_d.vel, dt);
 			return n_d;
 		}, dt);
