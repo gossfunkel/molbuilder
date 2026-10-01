@@ -182,7 +182,7 @@ int main() {
 		// 3) observer follows pinned origin node
 		Vector2 global_vel = g.at(0)->n_data.vel;
 		g.fmap(+[](NodeData n_d, Vector2 global_vel){
-			n_d.pos -= global_vel;
+			n_d.vel -= global_vel;
 			return n_d;
 		}, global_vel);
 		// 4) move nodes

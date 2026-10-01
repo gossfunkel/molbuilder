@@ -136,15 +136,15 @@ public:
 	 * Apply a function equally to each member of the graph
 	 */
 	void fmap (DataType (*f)(DataType x)) {
-		for (auto lyr : _ndata) 
-			for (auto [id,nd] : lyr)
+		for (auto& lyr : _ndata) 
+			for (auto& [id,nd] : lyr)
 				nd.n_data = f(nd.n_data);
 	}
 
 	template <typename T>
 	void fmap (DataType (*f)(DataType x, T y), T y) {
-		for (auto lyr : _ndata) 
-			for (auto [id,nd] : lyr)
+		for (auto& lyr : _ndata) 
+			for (auto& [id,nd] : lyr)
 				nd.n_data = f(nd.n_data, y);
 	}
 
@@ -154,9 +154,9 @@ public:
 	 */
 	void fmap_nbrs (std::pair<DataType, DataType>
 			(*f)(std::pair<DataType, DataType> xs)) {
-		for (auto lyr : _ndata) 
-				for (auto [id,nd] : lyr) 
-					for (auto nbr : nd.edges) {
+		for (auto& lyr : _ndata) 
+				for (auto& [id,nd] : lyr) 
+					for (auto& nbr : nd.edges) {
 						std::pair<DataType, DataType> res 
 							= {nd.n_data, at(nbr)->n_data};
 						res = f(res);
@@ -168,9 +168,9 @@ public:
 	template <typename T>
 	void fmap_nbrs (std::pair<DataType, DataType>
 			(*f)(std::pair<DataType, DataType> xs, T y), T y) {
-		for (auto lyr : _ndata) 
-				for (auto [id,nd] : lyr) 
-					for (auto nbr : nd.edges) {
+		for (auto& lyr : _ndata) 
+				for (auto& [id,nd] : lyr) 
+					for (auto& nbr : nd.edges) {
 						std::pair<DataType, DataType> res 
 							= {nd.n_data, at(nbr)->n_data};
 						res = f(res, y);
