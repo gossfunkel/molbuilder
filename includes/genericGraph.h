@@ -7,11 +7,18 @@
 #include <iostream>
 
 template <typename DataType>
+struct EdgeConnection {
+    float angle;
+    size_t other_node_idx;
+};
+
+template <typename DataType>
 struct Node {
 	DataType n_data;
 	size_t layer;
 	//std::vector<Node<DataType>*> edges;
-	std::vector<size_t> edges;
+	//std::vector<size_t> edges;
+    std::vector<EdgeConnection> edges;
 };
 
 /*

@@ -2,26 +2,36 @@
 #include <unordered_map>
 #include "raylib.h"
 #include "raymath.h"
-#include "graph.h"
+//#include "graph.h"
+#include "genericGraph.h"
 
 #define EDGE_LEN 25.f
 
+/*
 typedef struct Graph {
 	NodeMap nodes;
 	LinkVec links;
 } Graph;
+*/
+
+void move() {
+    // 1 - iterate through all nodes to find forces
+    // 2 - iterate through each edge in dijkstra order
+    //     to amend node-edge angles
+}
 
 int main() {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Geometric Graph Builder");
 
-    Graph g = {};
+    Graph g = Graph(Node<Vector2>(Vector2(0.,0.),0,std::vector<size_t>()));
 
-    Graph g = Graph{NodeData{}, NbrPairs{}};
+    /*Graph g = Graph{NodeData{}, NbrPairs{}};
     g.node_data.emplace(0, Circle(Vector2{SCREEN_WIDTH/2.f - 50.f, SCREEN_HEIGHT/2.f}));
     g.node_data.emplace(1, Circle(Vector2{SCREEN_WIDTH/2.f + 50.f, SCREEN_HEIGHT/2.f}));
     g.node_data.at(0).m_neighbours.emplace_back(1);
     g.node_data.at(1).m_neighbours.emplace_back(0);
     g.all_nbrs = refresh_all_nbrs(g.node_data);
+    */
 
     while (!WindowShouldClose()) {
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
