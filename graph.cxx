@@ -1,3 +1,5 @@
+#include "raylib.h"
+//#include "raymath.h"
 #include "genericGraph.h"
 
 #define SCREEN_WIDTH 800

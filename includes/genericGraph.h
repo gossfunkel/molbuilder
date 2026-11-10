@@ -6,11 +6,10 @@
 #include <ranges>
 #include <iostream>
 
-template <typename DataType>
-struct EdgeConnection {
-    float angle;
-    size_t other_node_idx;
-};
+typedef struct {
+	float angle;
+	size_t other_node_idx;
+} EdgeConnection;
 
 template <typename DataType>
 struct Node {
@@ -18,7 +17,7 @@ struct Node {
 	size_t layer;
 	//std::vector<Node<DataType>*> edges;
 	//std::vector<size_t> edges;
-    std::vector<EdgeConnection> edges;
+	std::vector<EdgeConnection> edges;
 };
 
 /*

@@ -21,10 +21,13 @@ instance Functor Graph where
 
 
 {- 
+TODO dijsktra-ordered mapping 
+dmap = 
+
 TODO map fn with two inputs to each node and each of its neighbours in turn
 nmap :: (Node a -> Node a -> Node a) -> Graph a -> Graph a
 nmap = 
 
-TODO dijsktra-ordered mapping 
-dmap = 
+TODO map fn to each pair of neighbours of each node
+pmap :: (Node a -> (Node a, Node a)) -> Graph a -> Graph a
 -}
